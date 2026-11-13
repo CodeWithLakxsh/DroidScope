@@ -1,0 +1,33 @@
+name: Feature request
+description: Suggest a capability
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that DroidScope makes hard?
+    validations: { required: true }
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like
+    validations: { required: true }
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      description: >-
+        DroidScope does not ship capabilities whose primary purpose is
+        defeating security controls on applications or devices the operator is
+        not authorised to test.
+      options:
+        - label: This request is for analysis, defence or authorised research
+          required: true

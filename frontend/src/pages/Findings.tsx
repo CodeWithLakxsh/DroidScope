@@ -204,6 +204,7 @@ export default function Findings() {
           ) : (
             <DataTable
               caption="Findings"
+              fixed
               columns={[
                 { key: 'severity', label: 'Severity', width: '7.5rem' },
                 { key: 'title', label: 'Finding' },
@@ -225,23 +226,31 @@ export default function Findings() {
                   <td>
                     <SeverityBadge severity={finding.severity} />
                   </td>
-                  <td>
+                  {/* max-w-0 lets this cell shrink below its content width so a
+                      long file path cannot force the whole table to overflow. */}
+                  <td className="max-w-0">
                     <button
                       type="button"
-                      className="cursor-pointer text-left font-medium hover:underline"
+                      className="block w-full cursor-pointer truncate text-left font-medium hover:underline"
                       onClick={() => setSelected(finding.id)}
+                      title={finding.title}
                     >
                       {finding.title}
                     </button>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-1 text-[11px] text-subtle">
-                      <span className="ds-mono">{finding.rule_id}</span>
+                    <div className="mt-0.5 flex items-center gap-1 text-[11px] text-subtle">
+                      <span className="ds-mono shrink-0">{finding.rule_id}</span>
                       {finding.file_path ? (
-                        <span className="ds-mono truncate">
+                        <span
+                          className="ds-mono truncate"
+                          title={`${finding.file_path}${finding.line_number ? `:${finding.line_number}` : ''}`}
+                        >
                           · {finding.file_path}
                           {finding.line_number ? `:${finding.line_number}` : ''}
                         </span>
                       ) : finding.affected_component ? (
-                        <span className="ds-mono truncate">· {finding.affected_component}</span>
+                        <span className="ds-mono truncate" title={finding.affected_component}>
+                          · {finding.affected_component}
+                        </span>
                       ) : null}
                     </div>
                   </td>

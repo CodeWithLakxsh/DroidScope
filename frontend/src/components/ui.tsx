@@ -398,15 +398,18 @@ export function DataTable({
   children,
   caption,
   className,
+  fixed = false,
 }: {
   columns: { key: string; label: ReactNode; width?: string; align?: 'left' | 'right' }[];
   children: ReactNode;
   caption?: string;
   className?: string;
+  /** Honour the declared column widths instead of sizing to content. */
+  fixed?: boolean;
 }) {
   return (
     <div className={cn('ds-scroll-x', className)}>
-      <table className="ds-table">
+      <table className={cn('ds-table', fixed && 'table-fixed')}>
         {caption ? <caption className="sr-only">{caption}</caption> : null}
         <thead>
           <tr>

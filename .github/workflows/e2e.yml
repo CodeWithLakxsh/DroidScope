@@ -1,0 +1,97 @@
+name: End to end
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: Browser workflow
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install analysis tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends default-jre-headless
+          JADX_VERSION=1.5.1
+          curl -fsSL -o /tmp/jadx.zip \
+            "https://github.com/skylot/jadx/releases/download/v${JADX_VERSION}/jadx-${JADX_VERSION}.zip"
+          sudo mkdir -p /opt/jadx && sudo unzip -q /tmp/jadx.zip -d /opt/jadx
+          sudo ln -sf /opt/jadx/bin/jadx /usr/local/bin/jadx
+          sudo chmod +x /opt/jadx/bin/jadx
+
+      - name: Install backend
+        working-directory: backend
+        run: uv pip install --system -e ".[dev,yara]"
+
+      - name: Build fixture APK
+        run: scripts/development/build_fixture_apk.sh vulnerable
+
+      - name: Start backend and worker
+        env:
+          DROIDSCOPE_DATA_DIR: ${{ runner.temp }}/droidscope-data
+        run: |
+          droidscope init-db
+          nohup droidscope server --host 127.0.0.1 --port 8000 > "${{ runner.temp }}/api.log" 2>&1 &
+          nohup droidscope worker > "${{ runner.temp }}/worker.log" 2>&1 &
+          for i in $(seq 1 60); do
+            curl -fsS http://127.0.0.1:8000/api/v1/health && break
+            sleep 1
+          done
+
+      - name: Install frontend
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright browser
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Build and serve the frontend
+        working-directory: frontend
+        run: |
+          npm run build
+          nohup npx vite preview --port 5173 --strictPort > "${{ runner.temp }}/vite.log" 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:5173/ >/dev/null && break
+            sleep 1
+          done
+
+      - name: Run end-to-end tests
+        working-directory: frontend
+        env:
+          DROIDSCOPE_E2E_BASE_URL: http://127.0.0.1:5173
+        # The screenshot suite is for documentation, not verification.
+        run: npx playwright test workflow --project=chromium
+
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts
+          path: |
+            frontend/test-results
+            ${{ runner.temp }}/*.log
+          retention-days: 7

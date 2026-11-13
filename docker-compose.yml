@@ -1,0 +1,121 @@
+# DroidScope local deployment.
+#
+#   docker compose up --build
+#   frontend: http://localhost:8080
+#   API docs: http://localhost:8080/api/v1 ... (OpenAPI at http://localhost:8000/docs)
+#
+# Notes on the security posture of this file:
+#  * PostgreSQL and Redis are not published to the host; only the frontend is.
+#  * The worker handles untrusted APKs, so it drops every Linux capability, gets
+#    a read-only root filesystem and cannot gain new privileges.
+#  * No container mounts the Docker socket.
+#  * Dynamic analysis is not part of this stack: running an Android emulator
+#    inside an ordinary container is not portable. See docs/installation/dynamic-analysis.md.
+
+name: droidscope
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: droidscope
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-droidscope-local-only}
+      POSTGRES_DB: droidscope
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U droidscope -d droidscope"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    # Deliberately not published to the host.
+    expose:
+      - "5432"
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    expose:
+      - "6379"
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    environment:
+      DROIDSCOPE_DATABASE_URL: postgresql+psycopg://droidscope:${POSTGRES_PASSWORD:-droidscope-local-only}@postgres:5432/droidscope
+      DROIDSCOPE_REDIS_URL: redis://redis:6379/0
+      DROIDSCOPE_DATA_DIR: /data
+      DROIDSCOPE_ENVIRONMENT: production
+      DROIDSCOPE_LOG_JSON: "true"
+      DROIDSCOPE_CORS_ORIGINS: '["http://localhost:8080"]'
+      DROIDSCOPE_API_KEY: ${DROIDSCOPE_API_KEY:-}
+      DROIDSCOPE_REQUIRE_AUTH: ${DROIDSCOPE_REQUIRE_AUTH:-false}
+    volumes:
+      - artifact-data:/data
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    command: >-
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    expose:
+      - "8000"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    environment:
+      DROIDSCOPE_DATABASE_URL: postgresql+psycopg://droidscope:${POSTGRES_PASSWORD:-droidscope-local-only}@postgres:5432/droidscope
+      DROIDSCOPE_REDIS_URL: redis://redis:6379/0
+      DROIDSCOPE_DATA_DIR: /data
+      DROIDSCOPE_ENVIRONMENT: production
+      DROIDSCOPE_LOG_JSON: "true"
+      DROIDSCOPE_ANALYSIS_CONCURRENCY: "2"
+    volumes:
+      - artifact-data:/data
+      # Writable scratch space; the root filesystem stays read-only.
+      - type: tmpfs
+        target: /tmp
+        tmpfs: { size: 2147483648 }
+    depends_on:
+      postgres: { condition: service_healthy }
+      backend: { condition: service_started }
+    command: ["droidscope", "worker"]
+    restart: unless-stopped
+    # The worker parses hostile input, so it is the most constrained service.
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          memory: 4g
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/frontend.Dockerfile
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      backend: { condition: service_started }
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  postgres-data:
+  artifact-data:

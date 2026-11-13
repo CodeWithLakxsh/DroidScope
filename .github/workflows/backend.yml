@@ -1,0 +1,122 @@
+name: Backend
+
+on:
+  push:
+    branches: [main]
+    paths: ['backend/**', 'rules/**', 'tests/**', '.github/workflows/backend.yml']
+  pull_request:
+    paths: ['backend/**', 'rules/**', 'tests/**', '.github/workflows/backend.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint and type check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        working-directory: backend
+        run: uv pip install --system -e ".[dev,yara]"
+
+      - name: Ruff (lint)
+        working-directory: backend
+        run: ruff check app tests --output-format github
+
+      - name: Ruff (format check)
+        working-directory: backend
+        run: ruff format --check app tests
+
+      - name: mypy
+        working-directory: backend
+        # Type checking is advisory while annotations are still being tightened.
+        continue-on-error: true
+        run: mypy app
+
+  test:
+    name: Tests (Python ${{ matrix.python }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install ${{ matrix.python }}
+
+      - name: Install analysis tooling
+        # JADX and apktool are needed by the source and resource analyzers.
+        # Tests that depend on them skip cleanly when they are absent, but CI
+        # should exercise the real path.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends default-jre-headless
+          JADX_VERSION=1.5.1
+          curl -fsSL -o /tmp/jadx.zip \
+            "https://github.com/skylot/jadx/releases/download/v${JADX_VERSION}/jadx-${JADX_VERSION}.zip"
+          sudo mkdir -p /opt/jadx && sudo unzip -q /tmp/jadx.zip -d /opt/jadx
+          sudo ln -sf /opt/jadx/bin/jadx /usr/local/bin/jadx
+          sudo chmod +x /opt/jadx/bin/jadx
+
+      - name: Install dependencies
+        working-directory: backend
+        run: uv pip install --system -e ".[dev,yara]"
+
+      - name: Build fixture APKs
+        # The fixtures are built from source so no APK binary is committed.
+        run: |
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          scripts/development/build_fixture_apk.sh all || \
+            echo "::warning::fixture build unavailable; fixture tests will skip"
+
+      - name: Validate detection rules
+        working-directory: backend
+        run: droidscope rules validate
+
+      - name: Run tests
+        working-directory: backend
+        run: pytest -q --cov=app --cov-report=xml --cov-report=term-missing
+
+      - name: Upload coverage
+        if: matrix.python == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
+          retention-days: 7
+
+  doctor:
+    name: Environment diagnostics
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv python install 3.12
+      - working-directory: backend
+        run: uv pip install --system -e ".[dev,yara]"
+      - name: droidscope doctor
+        working-directory: backend
+        # Reports missing optional tooling without failing the build.
+        run: droidscope doctor || true

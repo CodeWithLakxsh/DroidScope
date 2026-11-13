@@ -1,0 +1,48 @@
+name: False positive or false negative
+description: A rule fired on correct code, or missed a real weakness
+labels: [detection]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Detection accuracy reports are very welcome. The most useful thing you
+        can include is the smallest code snippet that reproduces it.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Which is it?
+      options:
+        - False positive (fired on correct code)
+        - False negative (missed a real weakness)
+    validations: { required: true }
+
+  - type: input
+    id: rule
+    attributes:
+      label: Rule identifier
+      placeholder: "DS-CRYPTO-001"
+    validations: { required: true }
+
+  - type: textarea
+    id: snippet
+    attributes:
+      label: The code
+      description: The smallest snippet that reproduces it. Redact anything sensitive.
+      render: java
+    validations: { required: true }
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why the current behaviour is wrong
+      description: >-
+        For a false positive, why is this code actually safe? For a false
+        negative, what is the weakness?
+    validations: { required: true }
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested change
+      description: Optional — extra context the rule should require or exclude.

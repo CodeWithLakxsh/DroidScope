@@ -1,0 +1,86 @@
+DroidScope
+Copyright 2026 The DroidScope Authors
+
+This product includes software developed by the DroidScope project, licensed
+under the Apache License, Version 2.0.
+
+===============================================================================
+Third-party components
+===============================================================================
+
+DroidScope does not bundle the external analysis tools it drives. They are
+installed separately and invoked as subprocesses, so their licences apply to
+your installation of them rather than to this repository. They are listed here
+so operators know what they are deploying.
+
+External tools invoked as subprocesses
+--------------------------------------
+JADX                 Apache License 2.0        https://github.com/skylot/jadx
+Apktool              Apache License 2.0        https://github.com/iBotPeaches/Apktool
+Ghidra               Apache License 2.0        https://github.com/NationalSecurityAgency/ghidra
+Android SDK tools    Android SDK Terms         https://developer.android.com/studio/terms
+  (adb, emulator, aapt2, d8, apksigner, zipalign)
+
+Python dependencies (installed from PyPI)
+-----------------------------------------
+androguard           Apache License 2.0        APK and DEX parsing
+fastapi              MIT License               HTTP framework
+starlette            BSD 3-Clause License      ASGI toolkit
+pydantic             MIT License               data validation
+SQLAlchemy           MIT License               database toolkit
+alembic              MIT License               schema migrations
+uvicorn              BSD 3-Clause License      ASGI server
+reportlab            BSD 3-Clause License      PDF generation
+Jinja2               BSD 3-Clause License      HTML report templating
+pyelftools           Public Domain             ELF parsing
+yara-python          Apache License 2.0        YARA bindings
+frida / frida-tools  wxWindows Library Licence runtime instrumentation
+mitmproxy            MIT License               network interception
+cryptography         Apache 2.0 / BSD          certificate handling
+asn1crypto           MIT License               ASN.1 parsing
+defusedxml           Python Software Foundation safe XML parsing
+typer                MIT License               command line interface
+rich                 MIT License               terminal rendering
+structlog            Apache 2.0 / MIT          structured logging
+PyYAML               MIT License               rule file parsing
+httpx                BSD 3-Clause License      HTTP client
+psutil               BSD 3-Clause License      process utilities
+
+JavaScript dependencies (installed from npm)
+--------------------------------------------
+React                MIT License
+React Router         MIT License
+TanStack Query       MIT License
+Tailwind CSS         MIT License
+Vite                 MIT License
+Monaco Editor        MIT License
+@xyflow/react        MIT License
+Recharts             MIT License
+Radix UI             MIT License
+lucide-react         ISC License
+Playwright           Apache License 2.0
+Vitest               MIT License
+
+Fonts
+-----
+IBM Plex Sans        SIL Open Font License 1.1
+JetBrains Mono       SIL Open Font License 1.1
+
+Reference material
+------------------
+Detection rules cite CWE (MITRE) and the OWASP Mobile Application Security
+Verification Standard (MASVS) and Testing Guide (MASTG). DroidScope reproduces
+only identifiers and links, not the text of those documents.
+
+CWE is a trademark of The MITRE Corporation.
+Android is a trademark of Google LLC. DroidScope is not affiliated with,
+endorsed by, or sponsored by Google.
+
+===============================================================================
+Test fixtures
+===============================================================================
+
+tests/fixtures/vulnerable-app and tests/fixtures/secure-app are original works
+written for this project. The vulnerable fixture contains deliberately insecure
+code and randomly generated strings shaped like credentials. Those strings were
+never issued by any service and authenticate to nothing.

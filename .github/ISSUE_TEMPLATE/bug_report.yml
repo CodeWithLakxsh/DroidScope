@@ -1,0 +1,62 @@
+name: Bug report
+description: Something does not work as documented
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Do not report security vulnerabilities in
+        DroidScope here** — use private reporting, see [SECURITY.md](../blob/main/SECURITY.md).
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you expect, and what happened instead?
+    validations: { required: true }
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. droidscope analyze app.apk --profile standard
+        2. ...
+    validations: { required: true }
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `droidscope doctor`
+      description: This tells us which analysis tools were available.
+      render: text
+    validations: { required: true }
+
+  - type: input
+    id: version
+    attributes:
+      label: DroidScope version
+      placeholder: "0.1.0, or a commit hash"
+    validations: { required: true }
+
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      placeholder: "macOS 15 arm64 / Ubuntu 24.04 / Windows 11 WSL2"
+    validations: { required: true }
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Run with `-v` or `DROIDSCOPE_LOG_LEVEL=DEBUG` if you can.
+      render: text
+
+  - type: checkboxes
+    id: confirm
+    attributes:
+      label: Before submitting
+      options:
+        - label: I am not attaching a malicious APK or any credential
+          required: true
