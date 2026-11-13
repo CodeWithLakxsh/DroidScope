@@ -75,22 +75,18 @@ jobs:
         working-directory: frontend
         run: npx playwright install --with-deps chromium
 
-      - name: Build and serve the frontend
+      - name: Build the frontend
         working-directory: frontend
-        run: |
-          npm run build
-          nohup npx vite preview --port 5173 --strictPort > "${{ runner.temp }}/vite.log" 2>&1 &
-          for i in $(seq 1 30); do
-            curl -fsS http://127.0.0.1:5173/ >/dev/null && break
-            sleep 1
-          done
+        run: npm run build
 
       - name: Run end-to-end tests
         working-directory: frontend
         env:
           DROIDSCOPE_E2E_BASE_URL: http://127.0.0.1:5173
+          # Playwright starts and waits for the preview server itself.
+          DROIDSCOPE_E2E_START_SERVER: '1'
         # The screenshot suite is for documentation, not verification.
-        run: npx playwright test workflow --project=chromium
+        run: npx playwright test workflow reduced-motion --project=chromium
 
       - name: Upload failure artifacts
         if: failure()

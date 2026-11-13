@@ -15,7 +15,6 @@ from app.detection.rules.secret_rules import (
     shannon_entropy,
 )
 
-
 # Credential-shaped strings are assembled at runtime rather than written as
 # literals. A security tool's own repository should not contain anything that
 # makes a secret scanner alarm for everyone who clones it -- GitHub push

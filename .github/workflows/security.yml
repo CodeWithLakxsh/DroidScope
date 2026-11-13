@@ -91,6 +91,19 @@ jobs:
           uv venv .venv
           echo "${GITHUB_WORKSPACE}/backend/.venv/bin" >> "${GITHUB_PATH}"
           uv pip install --python .venv/bin/python -e ".[dev,yara]"
+      - name: Install JADX
+        # Without it the self-scan only exercises manifest rules, which would
+        # make this job a much weaker regression check.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends default-jre-headless unzip
+          JADX_VERSION=1.5.1
+          curl -fsSL -o /tmp/jadx.zip \
+            "https://github.com/skylot/jadx/releases/download/v${JADX_VERSION}/jadx-${JADX_VERSION}.zip"
+          sudo mkdir -p /opt/jadx && sudo unzip -q /tmp/jadx.zip -d /opt/jadx
+          sudo ln -sf /opt/jadx/bin/jadx /usr/local/bin/jadx
+          sudo chmod +x /opt/jadx/bin/jadx
+
       - name: Build the vulnerable fixture
         run: scripts/development/build_fixture_apk.sh vulnerable
       - name: Analyse it and emit SARIF
@@ -99,14 +112,25 @@ jobs:
         run: |
           droidscope analyze tests/fixtures/vulnerable-app.apk \
             --profile standard --json > "${{ runner.temp }}/result.json" || true
-          python -c "
-          import json, sys
-          with open('${{ runner.temp }}/result.json') as handle:
+          python - <<'PY'
+          import json
+
+          with open("${{ runner.temp }}/result.json") as handle:
               result = json.load(handle)
-          counts = result['severity_counts']
-          print('findings:', result['findings_total'], counts)
-          # The fixture is deliberately insecure; a scan that finds nothing
-          # means the detection engine regressed.
-          assert result['findings_total'] > 20, 'detection regression: too few findings'
-          assert counts.get('critical', 0) > 0, 'detection regression: no critical findings'
-          "
+
+          counts = result["severity_counts"]
+          incomplete = [a for a in result["analyzers"] if a["status"] != "completed"]
+          print("findings:", result["findings_total"], counts)
+          for item in incomplete:
+              print(f"  analyzer {item['analyzer']} did not run: {item['error']}")
+
+          # The fixture is deliberately insecure, so a scan that finds little
+          # means the detection engine regressed. The thresholds are stated
+          # against what actually ran, so a missing tool reports as a missing
+          # tool rather than as a detection regression.
+          assert not incomplete, f"analyzers did not run: {[i['analyzer'] for i in incomplete]}"
+          assert result["findings_total"] > 40, "detection regression: too few findings"
+          assert counts.get("critical", 0) >= 5, "detection regression: critical findings missing"
+          assert counts.get("high", 0) >= 10, "detection regression: high findings missing"
+          print("detection engine healthy")
+          PY

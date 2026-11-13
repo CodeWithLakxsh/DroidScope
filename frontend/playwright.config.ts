@@ -29,4 +29,26 @@ export default defineConfig({
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
+
+  /*
+   * In CI, Playwright starts and waits for the preview server itself, which is
+   * far more reliable than backgrounding it in a shell step and polling.
+   *
+   * The explicit `--host 127.0.0.1` matters: `vite preview` otherwise binds to
+   * `localhost`, which resolves to ::1 first on GitHub runners, so a client
+   * connecting to 127.0.0.1 is refused.
+   *
+   * Locally the variable is unset, so the suite runs against whatever stack is
+   * already running.
+   */
+  webServer: process.env.DROIDSCOPE_E2E_START_SERVER
+    ? {
+        command: 'npx vite preview --port 5173 --strictPort --host 127.0.0.1',
+        url: 'http://127.0.0.1:5173',
+        reuseExistingServer: false,
+        timeout: 120_000,
+        stdout: 'pipe',
+        stderr: 'pipe',
+      }
+    : undefined,
 });
