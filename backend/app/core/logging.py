@@ -17,9 +17,12 @@ def configure_logging(settings: Settings) -> None:
     if _configured:
         return
 
+    # Logs go to stderr so that stdout carries only data. This is what makes
+    # `droidscope rules list --json | jq` work: a log line interleaved with the
+    # payload would make the output unparseable.
     logging.basicConfig(
         format="%(message)s",
-        stream=sys.stdout,
+        stream=sys.stderr,
         level=getattr(logging, settings.log_level.value),
     )
 
@@ -34,7 +37,7 @@ def configure_logging(settings: Settings) -> None:
     if settings.log_json:
         processors.append(structlog.processors.JSONRenderer())
     else:
-        processors.append(structlog.dev.ConsoleRenderer(colors=sys.stdout.isatty()))
+        processors.append(structlog.dev.ConsoleRenderer(colors=sys.stderr.isatty()))
 
     structlog.configure(
         processors=processors,

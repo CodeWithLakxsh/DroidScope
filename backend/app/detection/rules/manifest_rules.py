@@ -499,8 +499,7 @@ class BackupEnabledRule(Rule):
                     else "android:allowBackup is not declared and therefore defaults to true"
                 ),
                 snippet=(
-                    f'<application android:allowBackup="'
-                    f'{str(flags.allow_backup).lower()}" ... >'
+                    f'<application android:allowBackup="{str(flags.allow_backup).lower()}" ... >'
                 )
                 if explicit
                 else (
@@ -1293,8 +1292,7 @@ class OutdatedSdkRule(Rule):
         if min_sdk is not None and min_sdk <= self.UNSUPPORTED_MAX_API:
             yield self.finding(
                 title=(
-                    f"minSdkVersion {min_sdk} allows installation on unsupported "
-                    "Android releases"
+                    f"minSdkVersion {min_sdk} allows installation on unsupported Android releases"
                 ),
                 severity=Severity.low,
                 affected_component=context.metadata.package_name,

@@ -30,10 +30,11 @@ yara-python 4.5.4, Android SDK (build-tools 37.0.0, platform android-37).
 | APK comparison | Complete | Service implemented and wired; see gaps below |
 | CLI | Complete | All commands exercised manually |
 | Docker deployment | Config validated | `docker compose config` passes; **images not built** (see gaps) |
-| Dynamic analysis | Implemented, **partially unverified** | See the section below |
+| Dynamic analysis | Implemented, **partially unverified** | 19 unit tests for device selection, authorisation and module safety; no live device run — see below |
 
-Test totals on this machine: **167 backend tests**, **31 frontend tests**,
-**7 end-to-end tests**, all passing. Ruff clean, TypeScript clean.
+Test totals on this machine: **186 backend tests**, **31 frontend tests**,
+**7 end-to-end tests**, all passing. Ruff clean (lint and format), TypeScript
+clean, `alembic check` reports no schema drift.
 
 ---
 
