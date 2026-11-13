@@ -52,6 +52,10 @@ and evidence-backed reporting.
 - Durable database-backed job queue with atomic claiming, heartbeats and
   stale-lock recovery
 - React frontend with 17 pages, light and dark themes
+- Motion design system: token-based durations and easings, staggered list
+  entrances, skeleton loading, animated counters and indeterminate progress.
+  Every effect is suppressed under `prefers-reduced-motion`, verified in a
+  real browser rather than assumed
 - CLI: `doctor`, `analyze`, `report`, `compare`, `rules`, `server`, `worker`
 - APK comparison correlating findings by fingerprint rather than line number
 - Dynamic analysis: device discovery and read-only Frida instrumentation,
@@ -60,7 +64,7 @@ and evidence-backed reporting.
 - Alembic migrations
 
 **Testing**
-- 167 backend tests, 31 frontend tests, 7 end-to-end browser tests
+- 186 backend tests, 44 frontend tests, 12 end-to-end browser tests
 - Two fixture Android applications built from source — one deliberately
   insecure, one the corrected counterpart — so every rule can be proven to fire
   on the weakness and stay silent on the correct form

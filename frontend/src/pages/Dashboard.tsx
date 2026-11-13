@@ -18,6 +18,7 @@ import {
   YAxis,
 } from 'recharts';
 import { Package, Upload } from 'lucide-react';
+import { SkeletonTiles, Stagger } from '@/components/motion';
 import { useDashboard } from '@/hooks/queries';
 import {
   Card,
@@ -27,7 +28,6 @@ import {
   ErrorState,
   JobStatusBadge,
   LinkButton,
-  LoadingState,
   PageHeader,
   SeverityBadge,
   StatTile,
@@ -38,7 +38,15 @@ import type { Severity } from '@/types/api';
 export default function Dashboard() {
   const { data, isLoading, isError, error, refetch } = useDashboard();
 
-  if (isLoading) return <LoadingState label="Loading dashboard" />;
+  if (isLoading) {
+    // A skeleton reserves the layout so nothing jumps when the data lands.
+    return (
+      <>
+        <PageHeader title="Dashboard" description="Statistics computed from stored scan results." />
+        <SkeletonTiles />
+      </>
+    );
+  }
   if (isError) return <ErrorState error={error} onRetry={() => refetch()} />;
   if (!data) return null;
 
@@ -77,7 +85,11 @@ export default function Dashboard() {
         </Card>
       ) : (
         <>
-          <section aria-label="Totals" className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          <Stagger
+            as="section"
+            aria-label="Totals"
+            className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6"
+          >
             <StatTile label="APKs" value={data.apks_total} href="/applications" />
             <StatTile label="Scans" value={data.scans_total} href="/scans" />
             <StatTile
@@ -96,9 +108,10 @@ export default function Dashboard() {
               value={data.findings_by_severity.critical ?? 0}
               tone="critical"
             />
-          </section>
+          </Stagger>
 
-          <section
+          <Stagger
+            as="section"
             aria-label="Findings by severity"
             className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-5"
           >
@@ -110,7 +123,7 @@ export default function Dashboard() {
                 tone={item.severity as Severity}
               />
             ))}
-          </section>
+          </Stagger>
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Card>
@@ -197,6 +210,7 @@ export default function Dashboard() {
                   { key: 'duration', label: 'Duration', width: '6rem', align: 'right' },
                   { key: 'when', label: 'When', width: '8rem', align: 'right' },
                 ]}
+                staggerRows
               >
                 {data.recent_scans.map((scan) => (
                   <tr key={scan.id}>

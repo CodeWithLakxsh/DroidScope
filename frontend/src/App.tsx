@@ -1,7 +1,23 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { Layout } from '@/components/Layout';
 import { LoadingState } from '@/components/ui';
+
+/**
+ * Wraps a route in a short entrance, keyed on the path.
+ *
+ * Re-keying on pathname restarts the animation on every navigation, which
+ * tells the reader the content changed — useful here because the shell stays
+ * put and only the main region swaps.
+ */
+function Page({ children }: { children: React.ReactNode }) {
+  const { pathname } = useLocation();
+  return (
+    <div key={pathname} className="ds-animate-rise">
+      <Suspense fallback={<LoadingState />}>{children}</Suspense>
+    </div>
+  );
+}
 
 // Heavy views (Monaco, React Flow, charts) load on demand.
 const Dashboard = lazy(() => import('@/pages/Dashboard'));
@@ -27,14 +43,7 @@ export function App() {
     <BrowserRouter>
       <Routes>
         <Route element={<Layout />}>
-          <Route
-            path="/"
-            element={
-              <Suspense fallback={<LoadingState />}>
-                <Dashboard />
-              </Suspense>
-            }
-          />
+          <Route path="/" element={<Page><Dashboard /></Page>} />
           {[
             { path: '/upload', element: <UploadPage /> },
             { path: '/applications', element: <Applications /> },
@@ -59,21 +68,10 @@ export function App() {
             { path: '/reports/:scanId', element: <Reports /> },
             { path: '/settings', element: <SettingsPage /> },
           ].map((route) => (
-            <Route
-              key={route.path}
-              path={route.path}
-              element={<Suspense fallback={<LoadingState />}>{route.element}</Suspense>}
-            />
+            <Route key={route.path} path={route.path} element={<Page>{route.element}</Page>} />
           ))}
           <Route path="/dashboard" element={<Navigate to="/" replace />} />
-          <Route
-            path="*"
-            element={
-              <Suspense fallback={<LoadingState />}>
-                <NotFound />
-              </Suspense>
-            }
-          />
+          <Route path="*" element={<Page><NotFound /></Page>} />
         </Route>
       </Routes>
     </BrowserRouter>

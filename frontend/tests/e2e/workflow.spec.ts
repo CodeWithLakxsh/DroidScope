@@ -23,12 +23,31 @@ test.beforeAll(() => {
   }
 });
 
+/**
+ * Waits for the scan in the current URL to reach a terminal state.
+ *
+ * This polls the API rather than matching text on the page. Matching text was
+ * wrong: the analyzer coverage table shows "completed" per analyzer while the
+ * scan as a whole is still running, so the test proceeded early and then found
+ * an empty findings list.
+ */
 async function waitForScanCompletion(page: Page) {
-  // The worker runs the scan out of process; poll the detail page until it
-  // reaches a terminal state rather than assuming a fixed duration.
-  await expect(page.getByText(/completed|failed|cancelled/i).first()).toBeVisible({
-    timeout: 120_000,
-  });
+  const scanId = page.url().split('/scans/')[1]?.split(/[?#]/)[0];
+  expect(scanId, 'expected to be on a scan detail page').toBeTruthy();
+
+  await expect
+    .poll(
+      async () => {
+        const response = await page.request.get(`/api/v1/scans/${scanId}`);
+        if (!response.ok()) return 'unreachable';
+        return (await response.json()).status as string;
+      },
+      { timeout: 120_000, intervals: [500, 1000, 2000] },
+    )
+    .toMatch(/^(completed|failed|cancelled)$/);
+
+  // Let the UI pick up the terminal state before the caller reads the page.
+  await expect(page.getByText('Analyzer coverage')).toBeVisible();
 }
 
 test.describe('DroidScope', () => {

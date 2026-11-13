@@ -26,14 +26,15 @@ yara-python 4.5.4, Android SDK (build-tools 37.0.0, platform android-37).
 | Scan pipeline and worker | Complete | End-to-end through the API with a real background worker |
 | REST API (32 endpoints) | Complete | 21 API tests |
 | Reports (PDF/HTML/JSON/SARIF) | Complete | Generated and parsed back; PDF verified with pypdf |
-| Frontend (17 pages) | Complete | 31 unit tests, 7 Playwright E2E tests, builds clean |
+| Frontend (17 pages) | Complete | 44 unit tests, 12 Playwright tests, builds clean |
+| Motion design | Complete | Token-based system; reduced-motion compliance verified in a real browser |
 | APK comparison | Complete | Service implemented and wired; see gaps below |
 | CLI | Complete | All commands exercised manually |
 | Docker deployment | Config validated | `docker compose config` passes; **images not built** (see gaps) |
 | Dynamic analysis | Implemented, **partially unverified** | 19 unit tests for device selection, authorisation and module safety; no live device run — see below |
 
-Test totals on this machine: **186 backend tests**, **31 frontend tests**,
-**7 end-to-end tests**, all passing. Ruff clean (lint and format), TypeScript
+Test totals on this machine: **186 backend tests**, **44 frontend tests**,
+**12 end-to-end tests** (7 workflow + 5 reduced-motion), all passing. Ruff clean (lint and format), TypeScript
 clean, `alembic check` reports no schema drift.
 
 ---

@@ -3,6 +3,7 @@
 import { useParams } from 'react-router-dom';
 import { Play } from 'lucide-react';
 import { api } from '@/lib/api';
+import { Stagger } from '@/components/motion';
 import { useApk, useCreateScan, useScans } from '@/hooks/queries';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
@@ -96,14 +97,18 @@ export default function ApplicationOverview() {
         </div>
       ) : null}
 
-      <section aria-label="Contents" className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      <Stagger
+        as="section"
+        aria-label="Contents"
+        className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6"
+      >
         <StatTile label="Components" value={components.length} />
         <StatTile label="Exported" value={exported.length} tone={exported.length ? 'medium' : undefined} />
         <StatTile label="Permissions" value={metadata.requested_permissions.length} />
         <StatTile label="DEX files" value={metadata.dex_files.length} />
         <StatTile label="Native libs" value={metadata.native_libraries.length} />
         <StatTile label="Scans" value={apk.data.scan_count} />
-      </section>
+      </Stagger>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>

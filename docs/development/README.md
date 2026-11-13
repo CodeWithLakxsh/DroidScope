@@ -106,3 +106,5 @@ a scan completes with fewer findings than expected.
 - Analyzers never raise for an expected condition; they return a status.
 - Nothing in a user-reachable code path invents data.
 - Severity and status are never conveyed by colour alone in the UI.
+- Motion follows [motion.md](motion.md): it orients, explains or acknowledges,
+  and every effect is suppressed under `prefers-reduced-motion`.

@@ -10,13 +10,18 @@
 import { forwardRef, type ButtonHTMLAttributes, type HTMLAttributes, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/cn';
+import { CountUp } from '@/components/motion';
 import { SEVERITY_GLYPH, SEVERITY_LABEL } from '@/lib/format';
 import type { Severity } from '@/types/api';
 
 /* ---------------------------------------------------------------- surfaces */
 
-export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('ds-surface', className)} {...props} />;
+export function Card({
+  className,
+  interactive = false,
+  ...props
+}: HTMLAttributes<HTMLDivElement> & { interactive?: boolean }) {
+  return <div className={cn('ds-surface', interactive && 'ds-lift', className)} {...props} />;
 }
 
 export function CardHeader({
@@ -76,7 +81,10 @@ type ButtonSize = 'sm' | 'md';
 
 const BUTTON_BASE =
   'inline-flex items-center justify-center gap-1.5 rounded-sm font-medium transition-colors ' +
-  'duration-150 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer whitespace-nowrap';
+  'duration-150 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer whitespace-nowrap ' +
+  // ds-press gives a scale acknowledgement on tap, which reads identically in
+  // both themes and does not rely on colour.
+  'ds-press';
 
 const BUTTON_SIZES: Record<ButtonSize, string> = {
   // 32px tall minimum; comfortably clickable while staying dense.
@@ -253,7 +261,7 @@ export function Chip({ children, className }: { children: ReactNode; className?:
 export function Spinner({ className, label = 'Loading' }: { className?: string; label?: string }) {
   return (
     <span role="status" aria-live="polite" className={cn('inline-flex items-center gap-2', className)}>
-      <svg className="size-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <svg className="ds-animate-spin size-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <circle cx="12" cy="12" r="9" stroke="currentColor" strokeOpacity="0.25" strokeWidth="3" />
         <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
       </svg>
@@ -264,7 +272,7 @@ export function Spinner({ className, label = 'Loading' }: { className?: string; 
 
 export function LoadingState({ label = 'Loading' }: { label?: string }) {
   return (
-    <div className="flex items-center justify-center gap-2 px-4 py-12 text-sm text-muted">
+    <div className="ds-animate-fade flex items-center justify-center gap-2 px-4 py-12 text-sm text-muted">
       <Spinner label={label} />
       <span aria-hidden="true">{label}…</span>
     </div>
@@ -283,7 +291,7 @@ export function EmptyState({
   icon?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
+    <div className="ds-animate-rise flex flex-col items-center justify-center px-6 py-14 text-center">
       {icon ? <div className="mb-3 text-subtle">{icon}</div> : null}
       <h3 className="text-sm font-semibold">{title}</h3>
       {description ? (
@@ -308,7 +316,7 @@ export function ErrorState({
   return (
     <div
       role="alert"
-      className="flex flex-col items-center justify-center px-6 py-12 text-center"
+      className="ds-animate-rise flex flex-col items-center justify-center px-6 py-12 text-center"
     >
       <StatusBadge tone="error">Error</StatusBadge>
       <h3 className="mt-3 text-sm font-semibold">{title}</h3>
@@ -399,6 +407,7 @@ export function DataTable({
   caption,
   className,
   fixed = false,
+  staggerRows = false,
 }: {
   columns: { key: string; label: ReactNode; width?: string; align?: 'left' | 'right' }[];
   children: ReactNode;
@@ -406,6 +415,8 @@ export function DataTable({
   className?: string;
   /** Honour the declared column widths instead of sizing to content. */
   fixed?: boolean;
+  /** Fade rows in sequence, so a refreshed list reads in order. */
+  staggerRows?: boolean;
 }) {
   return (
     <div className={cn('ds-scroll-x', className)}>
@@ -424,7 +435,7 @@ export function DataTable({
             ))}
           </tr>
         </thead>
-        <tbody>{children}</tbody>
+        <tbody className={staggerRows ? "ds-stagger-rows" : undefined}>{children}</tbody>
       </table>
     </div>
   );
@@ -468,14 +479,19 @@ export function StatTile({
     <>
       <div className="text-[11px] font-medium tracking-wide text-muted uppercase">{label}</div>
       <div className="mt-1 text-2xl font-semibold tabular-nums" style={{ color: colour }}>
-        {value}
+        {/* A numeric total counts up, which draws the eye to a figure that
+            changed. Non-numeric values render as-is. */}
+        {typeof value === 'number' ? <CountUp value={value} /> : value}
       </div>
       {hint ? <div className="mt-0.5 text-[11px] text-subtle">{hint}</div> : null}
     </>
   );
   if (href) {
     return (
-      <Link to={href} className="ds-surface block px-3 py-2.5 transition-colors hover:brightness-[0.98]">
+      <Link
+        to={href}
+        className="ds-surface ds-lift block px-3 py-2.5 hover:brightness-[0.98]"
+      >
         {content}
       </Link>
     );
@@ -510,22 +526,38 @@ export function Note({
   );
 }
 
-export function ProgressBar({ value, label }: { value: number; label?: string }) {
+export function ProgressBar({
+  value,
+  label,
+  indeterminate = false,
+}: {
+  value: number;
+  label?: string;
+  /** Use when work is underway but its proportion is genuinely unknown. */
+  indeterminate?: boolean;
+}) {
   const percent = Math.round(Math.min(Math.max(value, 0), 1) * 100);
   return (
     <div
       role="progressbar"
-      aria-valuenow={percent}
+      // An indeterminate bar omits aria-valuenow, which is how assistive
+      // technology is told the proportion is unknown.
+      aria-valuenow={indeterminate ? undefined : percent}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-label={label ?? 'Progress'}
-      className="h-1.5 w-full overflow-hidden rounded-full"
+      className={cn(
+        'relative h-1.5 w-full overflow-hidden rounded-full',
+        indeterminate && 'ds-progress-indeterminate',
+      )}
       style={{ backgroundColor: 'var(--surface-hover)' }}
     >
-      <div
-        className="h-full rounded-full transition-[width] duration-300"
-        style={{ width: `${percent}%`, backgroundColor: 'var(--accent)' }}
-      />
+      {indeterminate ? null : (
+        <div
+          className="h-full rounded-full transition-[width] duration-500 ease-out"
+          style={{ width: `${percent}%`, backgroundColor: 'var(--accent)' }}
+        />
+      )}
     </div>
   );
 }

@@ -321,6 +321,24 @@ tracked in [docs/DEVELOPMENT_STATUS.md](docs/DEVELOPMENT_STATUS.md).
 
 ---
 
+## Design and motion
+
+The interface follows a Swiss/minimal direction: slate surfaces, a restrained
+teal accent, dense spacing and JetBrains Mono alongside IBM Plex Sans. Green is
+deliberately not the accent — it is reserved for status, so an accented button
+can never be mistaken for a "pass".
+
+Motion is subordinate to the work: every effect orients, explains or
+acknowledges, and nothing animates for decoration. Only `transform` and
+`opacity` are animated, and every effect is **suppressed** under
+`prefers-reduced-motion` — not shortened — with the end state applied, which is
+verified in a real browser by `frontend/tests/e2e/reduced-motion.spec.ts`.
+
+Severity and status never rely on colour alone: each renders a glyph and a text
+label as well, so the UI survives greyscale and colour blindness.
+
+See [docs/development/motion.md](docs/development/motion.md).
+
 ## Development
 
 ```bash

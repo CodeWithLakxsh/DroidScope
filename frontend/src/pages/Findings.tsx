@@ -205,6 +205,7 @@ export default function Findings() {
             <DataTable
               caption="Findings"
               fixed
+              staggerRows
               columns={[
                 { key: 'severity', label: 'Severity', width: '7.5rem' },
                 { key: 'title', label: 'Finding' },
@@ -304,7 +305,7 @@ function FindingPanel({ findingId, onClose }: { findingId: string | null; onClos
   if (!finding) return null;
 
   return (
-    <Card>
+    <Card className="ds-animate-slide-in">
       <CardHeader
         title={
           <span className="flex items-start gap-2">

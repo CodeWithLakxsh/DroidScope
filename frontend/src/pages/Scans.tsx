@@ -69,6 +69,7 @@ export default function Scans() {
         ) : (
           <DataTable
             caption="Scan history"
+            staggerRows
             columns={[
               { key: 'scan', label: 'Scan' },
               { key: 'app', label: 'Application' },
@@ -99,7 +100,11 @@ export default function Scans() {
                   <JobStatusBadge status={scan.status} />
                   {scan.status === 'running' ? (
                     <div className="mt-1">
-                      <ProgressBar value={scan.progress} label={`Scan progress: ${scan.stage ?? ''}`} />
+                      <ProgressBar
+                        value={scan.progress}
+                        indeterminate={scan.progress === 0}
+                        label={`Scan progress: ${scan.stage ?? ''}`}
+                      />
                       <div className="mt-0.5 text-[11px] text-subtle">{scan.stage}</div>
                     </div>
                   ) : null}

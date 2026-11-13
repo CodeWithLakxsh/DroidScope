@@ -8,6 +8,7 @@
 import { Link, useParams } from 'react-router-dom';
 import { AlertTriangle, Ban, Download, FileText } from 'lucide-react';
 import { api } from '@/lib/api';
+import { Live, Stagger } from '@/components/motion';
 import { useCancelScan, useScan } from '@/hooks/queries';
 import {
   Button,
@@ -83,12 +84,18 @@ export default function ScanDetailPage() {
         <Card className="mb-4 px-4 py-3">
           <div className="mb-1.5 flex items-center justify-between text-xs">
             <span className="flex items-center gap-2">
-              <JobStatusBadge status={scan.status} />
+              <Live active={scan.status === 'running'}>
+                <JobStatusBadge status={scan.status} />
+              </Live>
               <span className="text-muted">{scan.stage ?? 'preparing'}</span>
             </span>
             <span className="tabular-nums">{Math.round(scan.progress * 100)}%</span>
           </div>
-          <ProgressBar value={scan.progress} label="Scan progress" />
+          <ProgressBar
+            value={scan.progress}
+            indeterminate={scan.status === 'queued'}
+            label="Scan progress"
+          />
         </Card>
       ) : null}
 
@@ -100,7 +107,11 @@ export default function ScanDetailPage() {
         </div>
       ) : null}
 
-      <section aria-label="Summary" className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
+      <Stagger
+        as="section"
+        aria-label="Summary"
+        className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7"
+      >
         <StatTile
           label="Risk score"
           value={risk.score ?? '—'}
@@ -116,7 +127,7 @@ export default function ScanDetailPage() {
             tone={severity as Severity}
           />
         ))}
-      </section>
+      </Stagger>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>

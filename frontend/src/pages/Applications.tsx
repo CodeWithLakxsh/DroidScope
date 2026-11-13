@@ -66,6 +66,7 @@ export default function Applications() {
         ) : (
           <DataTable
             caption="Uploaded applications"
+            staggerRows
             columns={[
               { key: 'app', label: 'Application' },
               { key: 'version', label: 'Version', width: '9rem' },

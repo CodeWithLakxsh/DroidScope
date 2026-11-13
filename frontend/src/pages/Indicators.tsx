@@ -117,6 +117,7 @@ export default function Indicators() {
         ) : (
           <DataTable
             caption="Extracted network indicators"
+            staggerRows
             columns={[
               { key: 'type', label: 'Type', width: '5.5rem' },
               { key: 'value', label: 'Value' },
