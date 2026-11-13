@@ -90,9 +90,7 @@ PROVIDER_PATTERNS: tuple[ProviderPattern, ...] = (
     ),
     ProviderPattern(
         "Private key block",
-        re.compile(
-            r"(-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP |ENCRYPTED )?PRIVATE KEY-----)"
-        ),
+        re.compile(r"(-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP |ENCRYPTED )?PRIVATE KEY-----)"),
         Severity.critical,
         Confidence.high,
         note="A private key embedded in the APK is available to every installation.",
@@ -123,9 +121,7 @@ PROVIDER_PATTERNS: tuple[ProviderPattern, ...] = (
     ),
     ProviderPattern(
         "JSON Web Token",
-        re.compile(
-            r"\b(eyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{5,})\b"
-        ),
+        re.compile(r"\b(eyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{5,})\b"),
         Severity.medium,
         Confidence.medium,
         note=(
@@ -167,18 +163,57 @@ PROVIDER_PATTERNS: tuple[ProviderPattern, ...] = (
 # letter, so r"\bsecret_key\b" never matches "API_SECRET_KEY", which is exactly
 # how such constants are written in practice.
 SECRET_NAME_FRAGMENTS: tuple[str, ...] = (
-    "apikey", "secretkey", "clientsecret", "accesstoken", "authtoken",
-    "refreshtoken", "bearertoken", "privatekey", "encryptionkey", "signingkey",
-    "masterkey", "password", "passwd", "credential", "sessionsecret",
-    "appsecret", "consumersecret", "webhooksecret", "sharedsecret", "apisecret",
-    "authkey", "secrettoken", "accesskey", "clientkey", "apitoken",
+    "apikey",
+    "secretkey",
+    "clientsecret",
+    "accesstoken",
+    "authtoken",
+    "refreshtoken",
+    "bearertoken",
+    "privatekey",
+    "encryptionkey",
+    "signingkey",
+    "masterkey",
+    "password",
+    "passwd",
+    "credential",
+    "sessionsecret",
+    "appsecret",
+    "consumersecret",
+    "webhooksecret",
+    "sharedsecret",
+    "apisecret",
+    "authkey",
+    "secrettoken",
+    "accesskey",
+    "clientkey",
+    "apitoken",
 )
 # Identifier fragments that mean the constant describes a credential field
 # rather than holding one (a label, a preferences key, an error message).
 NON_SECRET_NAME_FRAGMENTS: tuple[str, ...] = (
-    "hint", "label", "placeholder", "field", "error", "message", "title",
-    "prompt", "regex", "pattern", "header", "paramname", "keyname", "prefkey",
-    "extra", "action", "column", "tag", "format", "url", "endpoint", "path",
+    "hint",
+    "label",
+    "placeholder",
+    "field",
+    "error",
+    "message",
+    "title",
+    "prompt",
+    "regex",
+    "pattern",
+    "header",
+    "paramname",
+    "keyname",
+    "prefkey",
+    "extra",
+    "action",
+    "column",
+    "tag",
+    "format",
+    "url",
+    "endpoint",
+    "path",
 )
 
 
@@ -191,6 +226,7 @@ def identifier_names_secret(name: str) -> bool:
     if any(fragment in normalised for fragment in NON_SECRET_NAME_FRAGMENTS):
         return False
     return any(fragment in normalised for fragment in SECRET_NAME_FRAGMENTS)
+
 
 # Assignment of a literal to an identifier.  Covers Java, Kotlin and smali.
 ASSIGNMENT = re.compile(
@@ -214,7 +250,9 @@ BENIGN_VALUE_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"^(?:[A-Za-z]+[ _\-]){2,}[A-Za-z]+$"),  # human sentence
     re.compile(r"^L[a-zA-Z0-9/$_]+;$"),  # smali type descriptor
     re.compile(r"^\.?[A-Za-z0-9_]+(?:/[A-Za-z0-9_.$]+)+$"),  # smali path
-    re.compile(r"(?i)^(?:true|false|null|none|undefined|changeme|your[_-]?key|xxx+|test|example|placeholder|dummy|sample|todo|fixme|lorem)"),
+    re.compile(
+        r"(?i)^(?:true|false|null|none|undefined|changeme|your[_-]?key|xxx+|test|example|placeholder|dummy|sample|todo|fixme|lorem)"
+    ),
     re.compile(r"^[\x00-\x1f]+$"),
 )
 
@@ -222,8 +260,22 @@ BENIGN_VALUE_PATTERNS: tuple[re.Pattern[str], ...] = (
 TEMPLATE_MARKERS = ("%s", "%d", "{0}", "{}", "${", "<", "@string/", "@+id/")
 
 PLACEHOLDER_WORDS = (
-    "your", "example", "sample", "placeholder", "dummy", "changeme", "insert",
-    "replace", "xxxx", "aaaa", "0000", "1234", "test_key", "fake", "mock", "redacted",
+    "your",
+    "example",
+    "sample",
+    "placeholder",
+    "dummy",
+    "changeme",
+    "insert",
+    "replace",
+    "xxxx",
+    "aaaa",
+    "0000",
+    "1234",
+    "test_key",
+    "fake",
+    "mock",
+    "redacted",
 )
 
 
@@ -235,9 +287,7 @@ def shannon_entropy(value: str) -> float:
     for char in value:
         counts[char] = counts.get(char, 0) + 1
     length = len(value)
-    return -sum(
-        (count / length) * math.log2(count / length) for count in counts.values()
-    )
+    return -sum((count / length) * math.log2(count / length) for count in counts.values())
 
 
 def character_classes(value: str) -> int:
@@ -323,7 +373,9 @@ class ProviderSecretRule(Rule):
         ):
             if emitted >= MAX_FINDINGS:
                 return
-            for finding in self.evaluate_file(source, third_party=context.is_third_party(source.relative_path)):
+            for finding in self.evaluate_file(
+                source, third_party=context.is_third_party(source.relative_path)
+            ):
                 key = (
                     finding.metadata.get("provider", ""),
                     finding.evidence[0].value_fingerprint() or "",
@@ -336,7 +388,9 @@ class ProviderSecretRule(Rule):
                 if emitted >= MAX_FINDINGS:
                     return
 
-    def evaluate_file(self, source: SourceFile, *, third_party: bool = False) -> Iterator[RawFinding]:
+    def evaluate_file(
+        self, source: SourceFile, *, third_party: bool = False
+    ) -> Iterator[RawFinding]:
         for provider in PROVIDER_PATTERNS:
             for match in provider.pattern.finditer(source.text):
                 value = match.group(provider.group)
@@ -498,7 +552,9 @@ class GenericSecretRule(Rule):
                 if emitted >= MAX_FINDINGS:
                     return
 
-    def evaluate_file(self, source: SourceFile, *, third_party: bool = False) -> Iterator[RawFinding]:
+    def evaluate_file(
+        self, source: SourceFile, *, third_party: bool = False
+    ) -> Iterator[RawFinding]:
         for candidate in self._candidates(source):
             name, value, line_number = candidate
             if looks_benign(value):

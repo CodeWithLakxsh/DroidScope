@@ -59,9 +59,7 @@ class ApktoolAdapter:
             command.append("--no-src")
 
         try:
-            result = await run_command(
-                command, timeout=self.timeout_seconds, cwd=output_dir.parent
-            )
+            result = await run_command(command, timeout=self.timeout_seconds, cwd=output_dir.parent)
         except AnalyzerTimeout as exc:
             counts = self._count(output_dir)
             return DecodeResult(

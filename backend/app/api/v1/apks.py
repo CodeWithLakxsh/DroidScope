@@ -96,9 +96,7 @@ async def list_apks(
     rows = (
         (
             await session.execute(
-                query.order_by(ApkArtifact.created_at.desc())
-                .limit(page.limit)
-                .offset(page.offset)
+                query.order_by(ApkArtifact.created_at.desc()).limit(page.limit).offset(page.offset)
             )
         )
         .scalars()
@@ -110,9 +108,7 @@ async def list_apks(
 
 
 @router.get("/{apk_id}", response_model=ApkDetail, summary="Get APK metadata")
-async def get_apk(
-    apk_id: str, session: AsyncSession = Depends(session_dependency)
-) -> ApkDetail:
+async def get_apk(apk_id: str, session: AsyncSession = Depends(session_dependency)) -> ApkDetail:
     apk = await session.get(ApkArtifact, apk_id)
     if apk is None:
         raise NotFoundError(f"APK {apk_id} does not exist")
@@ -163,9 +159,7 @@ async def get_manifest(
 # -- helpers -----------------------------------------------------------------
 async def _scan_context(session: AsyncSession, apk_id: str) -> tuple[int, Scan | None]:
     count = (
-        await session.execute(
-            select(func.count()).select_from(Scan).where(Scan.apk_id == apk_id)
-        )
+        await session.execute(select(func.count()).select_from(Scan).where(Scan.apk_id == apk_id))
     ).scalar_one()
     latest = (
         await session.execute(

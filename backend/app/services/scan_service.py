@@ -139,9 +139,7 @@ class ScanService:
     async def cancel(self, scan_id: str, *, actor: str = "local") -> Scan:
         scan = await self.require(scan_id)
         if JobStatus(scan.status).terminal:
-            raise ConflictError(
-                f"scan is already {scan.status.value} and cannot be cancelled"
-            )
+            raise ConflictError(f"scan is already {scan.status.value} and cannot be cancelled")
         scan.cancel_requested = True
         if scan.status == JobStatus.queued:
             # Nothing has started, so finish it immediately.
@@ -176,9 +174,7 @@ class ScanService:
         ).scalar_one()
 
         status_rows = (
-            await self.session.execute(
-                select(Scan.status, func.count()).group_by(Scan.status)
-            )
+            await self.session.execute(select(Scan.status, func.count()).group_by(Scan.status))
         ).all()
         by_status = {str(getattr(s, "value", s)): int(c) for s, c in status_rows}
 
@@ -209,7 +205,6 @@ class ScanService:
             "findings_total": int(findings_total),
             "findings_by_severity": by_severity,
             "findings_by_category": [
-                {"category": str(getattr(c, "value", c)), "count": int(n)}
-                for c, n in category_rows
+                {"category": str(getattr(c, "value", c)), "count": int(n)} for c, n in category_rows
             ],
         }

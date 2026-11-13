@@ -130,9 +130,7 @@ class Analyzer(ABC):
 
     async def check_prerequisites(self, data: AnalysisInput) -> tuple[bool, str | None]:
         """Report whether this analyzer can run, and why not when it cannot."""
-        missing = [
-            name for name in self.required_capabilities if not data.has_capability(name)
-        ]
+        missing = [name for name in self.required_capabilities if not data.has_capability(name)]
         if missing:
             hints = []
             for name in missing:

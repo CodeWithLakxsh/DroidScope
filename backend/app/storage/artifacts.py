@@ -85,7 +85,9 @@ class ArtifactStore:
         return sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
 
     # -- writing -----------------------------------------------------------
-    def write_stream(self, key: str, source: BinaryIO, *, max_bytes: int | None = None) -> StoredObject:
+    def write_stream(
+        self, key: str, source: BinaryIO, *, max_bytes: int | None = None
+    ) -> StoredObject:
         """Stream ``source`` to storage, hashing as it goes.
 
         The file is never fully buffered in memory, and the partial object is
@@ -114,8 +116,9 @@ class ArtifactStore:
             tmp_path.unlink(missing_ok=True)
             raise
         path.chmod(0o600)
-        return StoredObject(storage_key=self.validate_key(key), size_bytes=total,
-                            sha256=digest.hexdigest())
+        return StoredObject(
+            storage_key=self.validate_key(key), size_bytes=total, sha256=digest.hexdigest()
+        )
 
     def write_bytes(self, key: str, data: bytes) -> StoredObject:
         path = self.path_for(key)

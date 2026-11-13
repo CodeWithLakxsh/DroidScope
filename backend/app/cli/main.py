@@ -118,9 +118,7 @@ def doctor(
             status = "[green]available[/green]"
             detail = ", ".join(cap.required_for) or (cap.detail or "")
         else:
-            status = (
-                "[red]missing[/red]" if not cap.optional else "[yellow]not installed[/yellow]"
-            )
+            status = "[red]missing[/red]" if not cap.optional else "[yellow]not installed[/yellow]"
             detail = cap.install_hint or cap.detail or ""
         table.add_row(cap.name, status, cap.version or "-", detail[:70])
     console.print(table)
@@ -129,9 +127,7 @@ def doctor(
     analyzer_table.add_column("Analyzer", style="bold")
     analyzer_table.add_column("Available")
     for name, available in sorted(analyzers.items()):
-        analyzer_table.add_row(
-            name, "[green]yes[/green]" if available else "[yellow]no[/yellow]"
-        )
+        analyzer_table.add_row(name, "[green]yes[/green]" if available else "[yellow]no[/yellow]")
     console.print(analyzer_table)
 
     if required_missing:
@@ -209,11 +205,7 @@ async def _analyze(
         from app.models import Finding
 
         findings = (
-            (
-                await session.execute(
-                    select(Finding).where(Finding.scan_id == scan_id)
-                )
-            )
+            (await session.execute(select(Finding).where(Finding.scan_id == scan_id)))
             .scalars()
             .all()
         )
@@ -322,7 +314,8 @@ def _print_analysis(payload: dict, report_path: Path | None) -> None:
             if finding.get("line_number"):
                 location = f"{location}:{finding['line_number']}"
             table.add_row(
-                f"[{SEVERITY_STYLE[severity]}]{SEVERITY_GLYPH[severity]} {severity}[/{SEVERITY_STYLE[severity]}]",
+                f"[{SEVERITY_STYLE[severity]}]{SEVERITY_GLYPH[severity]} "
+                f"{severity}[/{SEVERITY_STYLE[severity]}]",
                 finding["rule_id"],
                 finding["title"][:62],
                 str(location)[-44:],

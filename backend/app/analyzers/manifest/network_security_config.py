@@ -97,7 +97,9 @@ def _trust_anchor_sources(element: Element) -> tuple[list[str], bool]:
     return sources, trust_user
 
 
-def parse_network_security_config(xml_text: str, *, source_file: str | None = None) -> NetworkSecurityConfig:
+def parse_network_security_config(
+    xml_text: str, *, source_file: str | None = None
+) -> NetworkSecurityConfig:
     config = NetworkSecurityConfig(present=True, source_file=source_file)
     try:
         root = safe_fromstring(xml_text.encode("utf-8", errors="replace"))
@@ -170,9 +172,7 @@ def resolve_config_resource(apk, reference: str | None) -> tuple[str | None, str
     # Resource shrinking can rename the file; fall back to a name search.
     if not any(candidate in files for candidate in candidates):
         candidates.extend(
-            path
-            for path in files
-            if path.startswith("res/") and "network_security" in path.lower()
+            path for path in files if path.startswith("res/") and "network_security" in path.lower()
         )
 
     for candidate in candidates:
@@ -180,7 +180,8 @@ def resolve_config_resource(apk, reference: str | None) -> tuple[str | None, str
             continue
         try:
             raw = apk.get_file(candidate)
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("nsc.entry_unreadable", entry=candidate, error=str(exc))
             continue
         if not raw:
             continue
@@ -197,7 +198,11 @@ def _decode_resource_xml(raw: bytes) -> str | None:
 
             printer = AXMLPrinter(raw)
             decoded = printer.get_xml()
-            return decoded.decode("utf-8", errors="replace") if isinstance(decoded, bytes) else str(decoded)
+            return (
+                decoded.decode("utf-8", errors="replace")
+                if isinstance(decoded, bytes)
+                else str(decoded)
+            )
         except Exception as exc:  # noqa: BLE001
             logger.debug("nsc.axml_decode_failed", error=str(exc))
             return None

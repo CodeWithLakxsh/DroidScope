@@ -78,7 +78,10 @@ class NativeHardeningRule(Rule):
                 )
             if hardening.get("stack_canary") is False:
                 missing.append(
-                    ("Stack canaries", "no __stack_chk_fail reference was found in the symbol table")
+                    (
+                        "Stack canaries",
+                        "no __stack_chk_fail reference was found in the symbol table",
+                    )
                 )
             if hardening.get("nx") is False:
                 missing.append(
@@ -120,10 +123,7 @@ class NativeHardeningRule(Rule):
             )
 
             yield self.finding(
-                title=(
-                    f"{path.split('/')[-1]} missing "
-                    + ", ".join(name for name, _ in missing)
-                ),
+                title=(f"{path.split('/')[-1]} missing " + ", ".join(name for name, _ in missing)),
                 severity=severity,
                 affected_component=path,
                 file_path=path,
@@ -176,12 +176,29 @@ class NativeDangerousImportRule(Rule):
     )
 
     UNSAFE_STRING = {
-        "strcpy", "strcat", "sprintf", "vsprintf", "gets", "stpcpy",
-        "wcscpy", "wcscat", "memcpy", "alloca",
+        "strcpy",
+        "strcat",
+        "sprintf",
+        "vsprintf",
+        "gets",
+        "stpcpy",
+        "wcscpy",
+        "wcscat",
+        "memcpy",
+        "alloca",
     }
     PROCESS_CONTROL = {
-        "system", "popen", "execl", "execle", "execlp", "execv", "execve",
-        "execvp", "fork", "ptrace", "dlopen",
+        "system",
+        "popen",
+        "execl",
+        "execle",
+        "execlp",
+        "execv",
+        "execve",
+        "execvp",
+        "fork",
+        "ptrace",
+        "dlopen",
     }
 
     def evaluate(self, context: NativeContext) -> Iterator[RawFinding]:

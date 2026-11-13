@@ -28,7 +28,9 @@ MASTG_COMPONENT = "https://mas.owasp.org/MASTG/tests/android/MASVS-PLATFORM/MAST
 MASTG_BACKUP = "https://mas.owasp.org/MASTG/tests/android/MASVS-STORAGE/MASTG-TEST-0009/"
 MASTG_DEBUG = "https://mas.owasp.org/MASTG/tests/android/MASVS-RESILIENCE/MASTG-TEST-0046/"
 MASTG_CLEARTEXT = "https://mas.owasp.org/MASTG/tests/android/MASVS-NETWORK/MASTG-TEST-0019/"
-ANDROID_EXPORTED_DOC = "https://developer.android.com/guide/topics/manifest/activity-element#exported"
+ANDROID_EXPORTED_DOC = (
+    "https://developer.android.com/guide/topics/manifest/activity-element#exported"
+)
 ANDROID_NSC_DOC = "https://developer.android.com/privacy-and-security/security-config"
 
 
@@ -45,7 +47,9 @@ def _component_guard(component: Component, context: ManifestContext) -> tuple[bo
         if not permission:
             continue
         declaration = context.metadata.declared_permission(permission)
-        level = declaration.protection_level if declaration else component.permission_protection_level
+        level = (
+            declaration.protection_level if declaration else component.permission_protection_level
+        )
         if _protection_is_restrictive(level):
             return True, level
         # A normal/dangerous custom permission is a weak guard: any app can
@@ -89,7 +93,7 @@ class ExportedComponentRule(Rule):
             "application assumes only its own code can trigger."
         ),
         remediation=(
-            "Set android:exported=\"false\" if the component is only used inside the "
+            'Set android:exported="false" if the component is only used inside the '
             "application. If it must be reachable by other applications, protect it "
             "with android:permission using a signature-level custom permission, and "
             "validate every field of the incoming Intent."
@@ -273,7 +277,7 @@ class ExportedProviderDataRule(Rule):
             "authority."
         ),
         remediation=(
-            "Set android:exported=\"false\" unless cross-application access is a "
+            'Set android:exported="false" unless cross-application access is a '
             "requirement. Where it is required, declare separate android:readPermission "
             "and android:writePermission with signature protection level, add "
             "<path-permission> entries for sensitive paths, and validate selection "
@@ -454,7 +458,7 @@ class BackupEnabledRule(Rule):
             "including databases, shared preferences and cached tokens."
         ),
         remediation=(
-            "Set android:allowBackup=\"false\" if the application stores credentials or "
+            'Set android:allowBackup="false" if the application stores credentials or '
             "other sensitive data. If backup is required, exclude sensitive paths using "
             "android:dataExtractionRules (API 31+) and android:fullBackupContent "
             "(API 23-30), and never place long-lived tokens in backed-up storage."
@@ -494,9 +498,15 @@ class BackupEnabledRule(Rule):
                     if explicit
                     else "android:allowBackup is not declared and therefore defaults to true"
                 ),
-                snippet=f'<application android:allowBackup="{str(flags.allow_backup).lower()}" ... >'
+                snippet=(
+                    f'<application android:allowBackup="'
+                    f'{str(flags.allow_backup).lower()}" ... >'
+                )
                 if explicit
-                else "<application ... >  <!-- allowBackup attribute absent, platform default is true -->",
+                else (
+                    "<application ... >  "
+                    "<!-- allowBackup attribute absent, platform default is true -->"
+                ),
                 file_path=context.manifest_path,
                 line_number=context.manifest_line_of("allowBackup"),
                 kind="manifest",
@@ -569,7 +579,7 @@ class CleartextTrafficRule(Rule):
         ),
         remediation=(
             "Remove android:usesCleartextTraffic and set cleartextTrafficPermitted="
-            "\"false\" in the base-config of the network security configuration. Where a "
+            '"false" in the base-config of the network security configuration. Where a '
             "specific host genuinely requires HTTP, scope the exception to that domain "
             "only, and move the exception into debug-overrides when it is for testing."
         ),
@@ -599,7 +609,9 @@ class CleartextTrafficRule(Rule):
         if config_blocks_globally and not domain_exceptions and not attribute_permits:
             return  # Properly configured: nothing to report.
 
-        if not (attribute_permits or config_permits_globally or domain_exceptions or default_permits):
+        if not (
+            attribute_permits or config_permits_globally or domain_exceptions or default_permits
+        ):
             return
 
         evidence: list[Evidence] = []
@@ -622,7 +634,7 @@ class CleartextTrafficRule(Rule):
                 Evidence(
                     description=(
                         "The network security configuration sets "
-                        "cleartextTrafficPermitted=\"true\" in base-config, which applies to "
+                        'cleartextTrafficPermitted="true" in base-config, which applies to '
                         "every destination"
                     ),
                     file_path=nsc.source_file if nsc else None,
@@ -675,7 +687,9 @@ class CleartextTrafficRule(Rule):
             )
             confidence = Confidence.medium
 
-        if target_sdk >= 28 and not (attribute_permits or config_permits_globally or domain_exceptions):
+        if target_sdk >= 28 and not (
+            attribute_permits or config_permits_globally or domain_exceptions
+        ):
             return
 
         evidence.append(
@@ -693,7 +707,11 @@ class CleartextTrafficRule(Rule):
             severity=severity,
             confidence=confidence,
             affected_component=context.metadata.package_name,
-            file_path=(nsc.source_file if (nsc and nsc.source_file and not attribute_permits) else context.manifest_path),
+            file_path=(
+                nsc.source_file
+                if (nsc and nsc.source_file and not attribute_permits)
+                else context.manifest_path
+            ),
             evidence=evidence,
             limitations=(
                 "This finding reports that cleartext is permitted, not that the "
@@ -732,7 +750,7 @@ class UserCertificateTrustRule(Rule):
             "traffic possible on a device the attacker controls."
         ),
         remediation=(
-            "Remove <certificates src=\"user\" /> from base-config and domain-config. If "
+            'Remove <certificates src="user" /> from base-config and domain-config. If '
             "it is needed for testing, move it into <debug-overrides>, which the "
             "platform only honours for debuggable builds."
         ),
@@ -749,9 +767,7 @@ class UserCertificateTrustRule(Rule):
         if not nsc or not nsc.present:
             return
 
-        trusting_domains = [
-            rule for rule in nsc.domain_rules if rule.trust_user_cas
-        ]
+        trusting_domains = [rule for rule in nsc.domain_rules if rule.trust_user_cas]
         if not nsc.base_trust_user_cas and not trusting_domains:
             return
 
@@ -760,7 +776,7 @@ class UserCertificateTrustRule(Rule):
             evidence.append(
                 Evidence(
                     description=(
-                        "base-config trust-anchors include <certificates src=\"user\" />, "
+                        'base-config trust-anchors include <certificates src="user" />, '
                         "applying to every destination"
                     ),
                     file_path=nsc.source_file,
@@ -793,7 +809,10 @@ class UserCertificateTrustRule(Rule):
             affected_component=context.metadata.package_name,
             file_path=nsc.source_file,
             evidence=evidence,
-            metadata={"base": nsc.base_trust_user_cas, "domains": [d.domains for d in trusting_domains]},
+            metadata={
+                "base": nsc.base_trust_user_cas,
+                "domains": [d.domains for d in trusting_domains],
+            },
         )
 
 
@@ -820,7 +839,7 @@ class CustomPermissionProtectionRule(Rule):
             "protection against a malicious application on the same device."
         ),
         remediation=(
-            "Declare the permission with android:protectionLevel=\"signature\" so that "
+            'Declare the permission with android:protectionLevel="signature" so that '
             "only applications signed with the same key can obtain it."
         ),
         cwe_ids=["CWE-732", "CWE-280"],
@@ -835,7 +854,11 @@ class CustomPermissionProtectionRule(Rule):
         metadata = context.metadata
         guarded_by: dict[str, list[str]] = {}
         for component in metadata.components:
-            for permission in (component.permission, component.read_permission, component.write_permission):
+            for permission in (
+                component.permission,
+                component.read_permission,
+                component.write_permission,
+            ):
                 if permission:
                     guarded_by.setdefault(permission, []).append(component.name)
 
@@ -867,7 +890,8 @@ class CustomPermissionProtectionRule(Rule):
                     ),
                     Evidence(
                         description=(
-                            "Used to protect: " + ", ".join(users[:8])
+                            "Used to protect: "
+                            + ", ".join(users[:8])
                             + (f" (+{len(users) - 8} more)" if len(users) > 8 else "")
                         ),
                         kind="manifest",
@@ -953,7 +977,8 @@ class DangerousPermissionCombinationRule(Rule):
                 "android.permission.SYSTEM_ALERT_WINDOW",
                 "android.permission.QUERY_ALL_PACKAGES",
             ),
-            "allows drawing over other applications while detecting which one is in the foreground, "
+            "allows drawing over other applications while detecting which one is in "
+            "the foreground, "
             "the pattern used by overlay phishing",
         ),
     )
@@ -1008,7 +1033,7 @@ class DeepLinkHandlingRule(Rule):
             "application, including links carrying authentication codes."
         ),
         remediation=(
-            "Add android:autoVerify=\"true\" to the intent filter and publish a "
+            'Add android:autoVerify="true" to the intent filter and publish a '
             "matching assetlinks.json at https://<host>/.well-known/assetlinks.json. "
             "Treat all data arriving through a deep link as untrusted input and never "
             "use it to authenticate the user or to decide authorisation."
@@ -1020,7 +1045,7 @@ class DeepLinkHandlingRule(Rule):
             "https://mas.owasp.org/MASTG/tests/android/MASVS-PLATFORM/MASTG-TEST-0031/",
         ],
         verification=(
-            "adb shell am start -a android.intent.action.VIEW -d \"<scheme>://<host>/<path>\" "
+            'adb shell am start -a android.intent.action.VIEW -d "<scheme>://<host>/<path>" '
             "and observe which activity receives the Intent."
         ),
     )
@@ -1122,7 +1147,7 @@ class TaskHijackingRule(Rule):
             "credential phishing."
         ),
         remediation=(
-            "Set android:taskAffinity=\"\" on the activity (or at application level) and "
+            'Set android:taskAffinity="" on the activity (or at application level) and '
             "avoid singleTask launch mode for exported activities. Raising "
             "minSdkVersion to 28 or above mitigates the original attack, as the "
             "platform no longer allows a new task to be reparented in this way."
@@ -1267,7 +1292,10 @@ class OutdatedSdkRule(Rule):
 
         if min_sdk is not None and min_sdk <= self.UNSUPPORTED_MAX_API:
             yield self.finding(
-                title=f"minSdkVersion {min_sdk} allows installation on unsupported Android releases",
+                title=(
+                    f"minSdkVersion {min_sdk} allows installation on unsupported "
+                    "Android releases"
+                ),
                 severity=Severity.low,
                 affected_component=context.metadata.package_name,
                 file_path=context.manifest_path,
@@ -1303,7 +1331,9 @@ class OutdatedSdkRule(Rule):
                     "introduced after its minSdkVersion, including the cleartext traffic "
                     "block and scoped storage."
                 ),
-                remediation="Declare targetSdkVersion explicitly and set it to a current API level.",
+                remediation=(
+                    "Declare targetSdkVersion explicitly and set it to a current API level."
+                ),
                 evidence=[
                     Evidence(
                         description="uses-sdk has no targetSdkVersion attribute",
@@ -1471,7 +1501,9 @@ class TestOnlyRule(Rule):
         remediation="Remove android:testOnly before producing a release build.",
         cwe_ids=["CWE-489"],
         masvs_controls=["MASVS-RESILIENCE-4"],
-        references=["https://developer.android.com/guide/topics/manifest/application-element#testOnly"],
+        references=[
+            "https://developer.android.com/guide/topics/manifest/application-element#testOnly"
+        ],
     )
 
     def evaluate(self, context: ManifestContext) -> Iterable[RawFinding]:
@@ -1483,7 +1515,7 @@ class TestOnlyRule(Rule):
             line_number=context.manifest_line_of("testOnly"),
             evidence=[
                 Evidence(
-                    description="Application element sets android:testOnly=\"true\"",
+                    description='Application element sets android:testOnly="true"',
                     file_path=context.manifest_path,
                     kind="manifest",
                 )

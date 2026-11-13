@@ -54,7 +54,9 @@ class DeviceManager:
     def adb_path(self) -> Path | None:
         return resolve_executable(self.settings.adb_path, names=("adb",))
 
-    async def list_devices(self, *, include_properties: bool = True) -> tuple[list[Device], list[str]]:
+    async def list_devices(
+        self, *, include_properties: bool = True
+    ) -> tuple[list[Device], list[str]]:
         """Return discovered devices and any messages explaining gaps."""
         messages: list[str] = []
         adb = self.adb_path()
@@ -131,7 +133,9 @@ class DeviceManager:
                 )
                 values[key] = result.stdout.strip()
             except Exception as exc:  # noqa: BLE001
-                logger.debug("devices.getprop_failed", serial=device.serial, prop=prop, error=str(exc))
+                logger.debug(
+                    "devices.getprop_failed", serial=device.serial, prop=prop, error=str(exc)
+                )
 
         device.model = values.get("model") or None
         device.manufacturer = values.get("manufacturer") or None
@@ -147,8 +151,7 @@ class DeviceManager:
 
         if values.get("build_tags") == "test-keys":
             device.notes.append(
-                "The build is signed with test-keys, typical of an emulator or a "
-                "development image."
+                "The build is signed with test-keys, typical of an emulator or a development image."
             )
         if device.rooted is False:
             device.notes.append(
@@ -170,9 +173,7 @@ class DeviceManager:
             if result.stdout.strip():
                 return True
             # An emulator image often has a root-capable adbd instead of `su`.
-            whoami = await run_command(
-                [adb, "-s", serial, "shell", "id"], timeout=ADB_TIMEOUT
-            )
+            whoami = await run_command([adb, "-s", serial, "shell", "id"], timeout=ADB_TIMEOUT)
             return "uid=0" in whoami.stdout
         except Exception as exc:  # noqa: BLE001
             logger.debug("devices.root_check_failed", serial=serial, error=str(exc))

@@ -21,8 +21,22 @@ logger = get_logger(__name__)
 
 MAX_SOURCE_FILE_BYTES = 4 * 1024 * 1024
 TEXT_SUFFIXES = {
-    ".java", ".kt", ".smali", ".xml", ".json", ".properties", ".txt", ".js",
-    ".html", ".yaml", ".yml", ".ini", ".cfg", ".graphql", ".sql", ".plist",
+    ".java",
+    ".kt",
+    ".smali",
+    ".xml",
+    ".json",
+    ".properties",
+    ".txt",
+    ".js",
+    ".html",
+    ".yaml",
+    ".yml",
+    ".ini",
+    ".cfg",
+    ".graphql",
+    ".sql",
+    ".plist",
 }
 
 

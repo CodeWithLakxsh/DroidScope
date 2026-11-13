@@ -123,9 +123,7 @@ async def list_sessions(
         count_query = count_query.where(DynamicSession.apk_id == apk_id)
 
     total = (await session.execute(count_query)).scalar_one()
-    rows = (
-        (await session.execute(query.limit(page.limit).offset(page.offset))).scalars().all()
-    )
+    rows = (await session.execute(query.limit(page.limit).offset(page.offset))).scalars().all()
     return Page[DynamicSessionOut](
         items=[DynamicSessionOut.model_validate(row) for row in rows],
         total=int(total),

@@ -121,14 +121,14 @@ class ScanPipeline:
         scan.progress = 0.02
         await self.session.commit()
 
-        workspace = Path(tempfile.mkdtemp(prefix=f"droidscope-{scan_id[:8]}-", dir=self.settings.tmp_dir))
+        workspace = Path(
+            tempfile.mkdtemp(prefix=f"droidscope-{scan_id[:8]}-", dir=self.settings.tmp_dir)
+        )
         cancellation = CancellationCheck(self.session, scan_id)
         outcome: PipelineOutcome
 
         try:
-            outcome = await self._execute(
-                scan, apk, workspace, cancellation, progress, started
-            )
+            outcome = await self._execute(scan, apk, workspace, cancellation, progress, started)
         except Exception as exc:  # noqa: BLE001 - must always land in a terminal state
             logger.exception("pipeline.failed", scan_id=scan_id)
             scan.status = JobStatus.failed
@@ -256,7 +256,9 @@ class ScanPipeline:
                 if capability.available and capability.version
             },
             "tools_unavailable": [
-                name for name, capability in sorted(capabilities.items()) if not capability.available
+                name
+                for name, capability in sorted(capabilities.items())
+                if not capability.available
             ],
             "rules_loaded": len(registry),
         }
@@ -327,14 +329,10 @@ class ScanPipeline:
     async def _apply_rule_overrides(self) -> None:
         rows = (await self.session.execute(select(DetectionRuleState))).scalars().all()
         disabled = [row.rule_id for row in rows if not row.enabled]
-        overrides = {
-            row.rule_id: row.severity_override for row in rows if row.severity_override
-        }
+        overrides = {row.rule_id: row.severity_override for row in rows if row.severity_override}
         registry.apply_overrides(disabled=disabled, severity_overrides=overrides)
 
-    async def _record_capabilities(
-        self, scan_id: str, capabilities: dict[str, Capability]
-    ) -> None:
+    async def _record_capabilities(self, scan_id: str, capabilities: dict[str, Capability]) -> None:
         import platform
 
         self.session.add(
@@ -474,8 +472,7 @@ class ScanPipeline:
                         value_fingerprint=evidence.value_fingerprint(),
                         raw_value=(
                             evidence.raw_value
-                            if evidence.sensitive
-                            and not self.settings.redact_secrets_in_reports
+                            if evidence.sensitive and not self.settings.redact_secrets_in_reports
                             else None
                         ),
                         evidence_metadata=evidence.metadata or {},

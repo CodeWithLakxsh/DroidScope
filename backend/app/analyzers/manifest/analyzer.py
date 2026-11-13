@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.analyzers.base import Analyzer, AnalysisInput, AnalyzerResult, ArtifactRef
+from app.analyzers.base import AnalysisInput, Analyzer, AnalyzerResult, ArtifactRef
 from app.analyzers.manifest.network_security_config import (
     NetworkSecurityConfig,
     parse_network_security_config,

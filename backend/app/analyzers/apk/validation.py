@@ -150,8 +150,9 @@ def validate_apk(path: Path, settings: Settings | None = None) -> ApkValidationR
             details={"magic": magic.hex()},
         )
 
-    result = ApkValidationResult(valid=False, file_size=file_size, entry_count=0,
-                                total_uncompressed=0)
+    result = ApkValidationResult(
+        valid=False, file_size=file_size, entry_count=0, total_uncompressed=0
+    )
     result.checks["magic"] = "pass"
 
     try:
@@ -295,7 +296,11 @@ def _check_apk_shape(
             )
         result.checks["dex_magic"] = "pass"
 
-    v1 = [n for n in names if n.startswith("META-INF/") and n.upper().endswith((".RSA", ".DSA", ".EC"))]
+    v1 = [
+        n
+        for n in names
+        if n.startswith("META-INF/") and n.upper().endswith((".RSA", ".DSA", ".EC"))
+    ]
     if v1:
         result.signature_schemes.append("v1-jar")
     # v2/v3 signatures live in the APK Signing Block, which sits between the
@@ -361,8 +366,9 @@ def safe_extract(
 
             target = (destination / info.filename).resolve()
             if destination not in target.parents and target != destination:
-                _reject("archive entry resolves outside the extraction root",
-                        entry=info.filename[:120])
+                _reject(
+                    "archive entry resolves outside the extraction root", entry=info.filename[:120]
+                )
 
             if info.is_dir():
                 target.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -374,8 +380,7 @@ def safe_extract(
 
             target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
             if target.parent.is_symlink():  # pragma: no cover - defensive
-                _reject("extraction target parent is a symbolic link",
-                        entry=info.filename[:120])
+                _reject("extraction target parent is a symbolic link", entry=info.filename[:120])
             with archive.open(info) as src, open(target, "wb") as dst:
                 remaining = info.file_size
                 while remaining > 0:

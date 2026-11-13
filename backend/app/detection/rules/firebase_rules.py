@@ -35,9 +35,7 @@ FIREBASE_RESOURCE_KEYS = {
     "google_crash_reporting_api_key": "Crash reporting API key",
 }
 
-FIREBASE_REFERENCE = (
-    "https://firebase.google.com/docs/projects/api-keys"
-)
+FIREBASE_REFERENCE = "https://firebase.google.com/docs/projects/api-keys"
 RULES_REFERENCE = "https://firebase.google.com/docs/rules"
 
 

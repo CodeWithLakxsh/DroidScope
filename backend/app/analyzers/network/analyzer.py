@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from app.analyzers.base import Analyzer, AnalysisInput, AnalyzerResult, ArtifactRef
+from app.analyzers.base import AnalysisInput, Analyzer, AnalyzerResult, ArtifactRef
 from app.analyzers.network.indicators import IndicatorExtractor, summarise
 from app.core.enums import AnalyzerStatus
 from app.core.logging import get_logger

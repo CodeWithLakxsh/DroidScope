@@ -48,9 +48,7 @@ class InternalEndpointRule(Rule):
         ),
         cwe_ids=["CWE-200"],
         masvs_controls=["MASVS-CODE-4"],
-        references=[
-            "https://mas.owasp.org/MASTG/tests/android/MASVS-CODE/MASTG-TEST-0026/"
-        ],
+        references=["https://mas.owasp.org/MASTG/tests/android/MASVS-CODE/MASTG-TEST-0026/"],
         limitations=(
             "An embedded address is not evidence that the application connects to it. "
             "DroidScope does not contact extracted endpoints and performs no scanning."
@@ -58,7 +56,17 @@ class InternalEndpointRule(Rule):
     )
 
     INTERNAL_SCOPES = {"private", "loopback", "link-local"}
-    DEV_HOST_MARKERS = ("staging", "dev.", "test.", "qa.", "uat", "internal", "intranet", "localhost", ".local")
+    DEV_HOST_MARKERS = (
+        "staging",
+        "dev.",
+        "test.",
+        "qa.",
+        "uat",
+        "internal",
+        "intranet",
+        "localhost",
+        ".local",
+    )
 
     def evaluate(self, context: IndicatorContext) -> Iterator[RawFinding]:
         grouped: dict[str, list[dict]] = {}
@@ -113,7 +121,10 @@ class InternalEndpointRule(Rule):
             }.get(key, key)
 
             yield self.finding(
-                title=f"Embedded {label} ({len(indicators)} indicator{'s' if len(indicators) != 1 else ''})",
+                title=(
+                    f"Embedded {label} ({len(indicators)} "
+                    f"indicator{'s' if len(indicators) != 1 else ''})"
+                ),
                 severity=severity,
                 affected_component=context.metadata.package_name if context.metadata else None,
                 evidence=evidence,
@@ -129,8 +140,7 @@ class RawIpEndpointRule(Rule):
         id="DS-INDICATOR-002",
         name="Endpoint addressed by raw IP address",
         description=(
-            "The application references a public endpoint by IP address rather than by "
-            "hostname."
+            "The application references a public endpoint by IP address rather than by hostname."
         ),
         category=FindingCategory.network_security,
         severity=Severity.low,
@@ -149,9 +159,7 @@ class RawIpEndpointRule(Rule):
         ),
         cwe_ids=["CWE-295"],
         masvs_controls=["MASVS-NETWORK-1"],
-        references=[
-            "https://mas.owasp.org/MASTG/tests/android/MASVS-NETWORK/MASTG-TEST-0020/"
-        ],
+        references=["https://mas.owasp.org/MASTG/tests/android/MASVS-NETWORK/MASTG-TEST-0020/"],
         limitations=(
             "Some IP references are legitimate (STUN servers, DNS resolvers, or "
             "fallback addresses). DroidScope does not contact the address."
@@ -162,8 +170,7 @@ class RawIpEndpointRule(Rule):
         candidates = [
             indicator
             for indicator in context.indicators
-            if indicator.get("indicator_type") == "ip"
-            and indicator.get("scope") == "public"
+            if indicator.get("indicator_type") == "ip" and indicator.get("scope") == "public"
         ]
         if not candidates:
             return

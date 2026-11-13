@@ -259,7 +259,9 @@ def _methodology(scan: Scan, executions: list[AnalyzerExecution]) -> dict[str, A
         ),
         "profile": str(getattr(scan.profile, "value", scan.profile)),
         "analyzers_run": sorted(
-            e.analyzer for e in executions if str(getattr(e.status, "value", e.status)) == "completed"
+            e.analyzer
+            for e in executions
+            if str(getattr(e.status, "value", e.status)) == "completed"
         ),
         "rule_sources": [
             "structural manifest rules evaluated against the parsed manifest model",

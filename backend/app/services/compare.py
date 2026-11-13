@@ -75,12 +75,8 @@ class CompareService:
             {d["name"] for d in new_meta.get("dex_files", [])},
         )
 
-        base_fingerprints = {
-            c.get("sha256_fingerprint") for c in base_meta.get("certificates", [])
-        }
-        new_fingerprints = {
-            c.get("sha256_fingerprint") for c in new_meta.get("certificates", [])
-        }
+        base_fingerprints = {c.get("sha256_fingerprint") for c in base_meta.get("certificates", [])}
+        new_fingerprints = {c.get("sha256_fingerprint") for c in new_meta.get("certificates", [])}
         signing_changed = base_fingerprints != new_fingerprints
 
         baseline_scan = await self._resolve_scan(baseline.id, baseline_scan_id)
@@ -148,9 +144,7 @@ class CompareService:
             "findings_new": len(findings_diff.get("new", [])),
             "findings_resolved": len(findings_diff.get("resolved", [])),
             "findings_unchanged": len(findings_diff.get("unchanged", [])),
-            "version_change": (
-                f"{baseline.version_name or '?'} → {updated.version_name or '?'}"
-            ),
+            "version_change": (f"{baseline.version_name or '?'} → {updated.version_name or '?'}"),
         }
 
         comparison = Comparison(

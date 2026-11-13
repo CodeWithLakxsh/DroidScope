@@ -156,7 +156,9 @@ class ElfInspector:
             logger.warning("elf.archive_unreadable", error=str(exc))
         return results
 
-    def inspect(self, path: Path, *, display_path: str | None = None, abi: str = "unknown") -> ElfAnalysis:
+    def inspect(
+        self, path: Path, *, display_path: str | None = None, abi: str = "unknown"
+    ) -> ElfAnalysis:
         analysis = ElfAnalysis(
             path=display_path or path.name,
             abi=abi,
@@ -286,7 +288,8 @@ class ElfInspector:
 
         symbols = set(analysis.imported_symbols) | set(analysis.exported_symbols)
         report.stack_canary = any(
-            name in symbols for name in ("__stack_chk_fail", "__stack_chk_guard", "__stack_smash_handler")
+            name in symbols
+            for name in ("__stack_chk_fail", "__stack_chk_guard", "__stack_smash_handler")
         )
         report.fortify = any(name.endswith("_chk") for name in symbols)
         report.pie = analysis.elf_type in {"ET_DYN"}

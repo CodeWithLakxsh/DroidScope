@@ -26,7 +26,7 @@ logger = get_logger(__name__)
 
 # Emitted into the Ghidra project so the headless run produces structured output
 # instead of requiring us to parse the human-readable log.
-POST_SCRIPT = '''# DroidScope headless export script (Ghidra Jython).
+POST_SCRIPT = """# DroidScope headless export script (Ghidra Jython).
 # Writes a JSON summary of the analysed program to the path given as argv[0].
 import json
 
@@ -72,7 +72,7 @@ with open(output_path, "w") as handle:
     json.dump(summary, handle, indent=2)
 
 print("DROIDSCOPE_GHIDRA_SUMMARY_WRITTEN " + output_path)
-'''
+"""
 
 
 class GhidraAdapter:

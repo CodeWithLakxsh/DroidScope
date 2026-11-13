@@ -121,9 +121,7 @@ async def list_scans(
 
 
 @router.get("/scans/{scan_id}", response_model=ScanDetail, summary="Get scan detail")
-async def get_scan(
-    scan_id: str, session: AsyncSession = Depends(session_dependency)
-) -> ScanDetail:
+async def get_scan(scan_id: str, session: AsyncSession = Depends(session_dependency)) -> ScanDetail:
     scan = await _require_scan(session, scan_id)
     summary = await _scan_summary(session, scan)
     executions = await ScanService(session).executions(scan_id)
@@ -206,11 +204,7 @@ async def list_scan_findings(
         count_query = count_query.where(condition)
 
     total = (await session.execute(count_query)).scalar_one()
-    rows = (
-        (await session.execute(query.order_by(*_ordering(sort))))
-        .scalars()
-        .all()
-    )
+    rows = (await session.execute(query.order_by(*_ordering(sort)))).scalars().all()
 
     # CWE and MASVS live in JSON columns; filtering them portably across SQLite
     # and PostgreSQL is done in Python on the already-narrowed set.
@@ -407,9 +401,7 @@ async def export_scan(
     return StreamingResponse(
         iter([payload.encode()]),
         media_type="application/json",
-        headers={
-            "Content-Disposition": f'attachment; filename="droidscope-{scan_id[:12]}.json"'
-        },
+        headers={"Content-Disposition": f'attachment; filename="droidscope-{scan_id[:12]}.json"'},
     )
 
 
@@ -513,9 +505,7 @@ async def _artifact_row(
 ) -> ScanArtifact:
     row = (
         await session.execute(
-            select(ScanArtifact).where(
-                ScanArtifact.scan_id == scan_id, ScanArtifact.kind == kind
-            )
+            select(ScanArtifact).where(ScanArtifact.scan_id == scan_id, ScanArtifact.kind == kind)
         )
     ).scalar_one_or_none()
     if row is None and required:

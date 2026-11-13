@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from app.analyzers.base import Analyzer, AnalysisInput, AnalyzerResult, ArtifactRef
+from app.analyzers.base import AnalysisInput, Analyzer, AnalyzerResult, ArtifactRef
 from app.core.enums import AnalyzerStatus, ScanProfile
 from app.core.logging import get_logger
 from app.detection.context import SourceContext, SourceIndex
@@ -112,7 +112,9 @@ class SourceAnalyzer(Analyzer):
 
         result.detail = {
             "decompiler": "jadx",
-            "decompiler_version": (data.capability("jadx").version if data.capability("jadx") else None),
+            "decompiler_version": (
+                data.capability("jadx").version if data.capability("jadx") else None
+            ),
             "java_files": decompiled.java_files,
             "resource_files": decompiled.resource_files,
             "indexed_files": index.file_count,

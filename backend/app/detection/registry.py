@@ -96,6 +96,7 @@ def register(rule: Rule) -> Rule:
 
 def load_builtin_rules() -> RuleRegistry:
     """Import every rule module so registration side effects happen once."""
+    from app.detection import pattern_rules
     from app.detection.rules import (  # noqa: F401
         firebase_rules,
         manifest_rules,
@@ -103,7 +104,6 @@ def load_builtin_rules() -> RuleRegistry:
         network_rules,
         secret_rules,
     )
-    from app.detection import pattern_rules
 
     pattern_rules.load_pattern_rules()
     return registry

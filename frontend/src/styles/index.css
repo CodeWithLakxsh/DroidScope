@@ -1,0 +1,228 @@
+@import "tailwindcss";
+
+/*
+ * DroidScope design tokens.
+ *
+ * Direction: Swiss/minimal, built for dense technical reading rather than
+ * marketing impact. Surfaces are slate; the single accent is teal. Green is
+ * deliberately *not* the accent: it is reserved for status semantics, so an
+ * accented button can never be mistaken for a "pass" indicator.
+ *
+ * Severity is never communicated by colour alone - every severity renders a
+ * glyph and a text label as well, which keeps the UI readable in greyscale and
+ * for colour-blind readers.
+ */
+
+@theme {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Dense spacing scale for a data-heavy tool. */
+  --spacing: 0.25rem;
+
+  --radius-xs: 0.1875rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+
+  --color-accent-50: #f0fdfa;
+  --color-accent-100: #ccfbf1;
+  --color-accent-200: #99f6e4;
+  --color-accent-300: #5eead4;
+  --color-accent-400: #2dd4bf;
+  --color-accent-500: #14b8a6;
+  --color-accent-600: #0d9488;
+  --color-accent-700: #0f766e;
+  --color-accent-800: #115e59;
+  --color-accent-900: #134e4a;
+
+  /* Severity ramp. Light-mode values meet 4.5:1 on the light surface; the
+     dark-mode overrides below meet it on the dark surface. */
+  --color-severity-critical: #9f1239;
+  --color-severity-high: #b45309;
+  --color-severity-medium: #a16207;
+  --color-severity-low: #1d4ed8;
+  --color-severity-info: #475569;
+}
+
+@layer base {
+  :root {
+    --surface: #ffffff;
+    --surface-raised: #f8fafc;
+    --surface-sunken: #f1f5f9;
+    --surface-hover: #e2e8f0;
+    --border: #cbd5e1;
+    --border-strong: #94a3b8;
+    --text: #0f172a;
+    --text-muted: #475569;
+    --text-subtle: #64748b;
+    --accent: #0f766e;
+    --accent-text: #ffffff;
+    --focus: #0d9488;
+
+    --severity-critical: #9f1239;
+    --severity-high: #b45309;
+    --severity-medium: #a16207;
+    --severity-low: #1d4ed8;
+    --severity-info: #475569;
+    --severity-critical-bg: #fff1f2;
+    --severity-high-bg: #fff7ed;
+    --severity-medium-bg: #fefce8;
+    --severity-low-bg: #eff6ff;
+    --severity-info-bg: #f8fafc;
+
+    --status-ok: #15803d;
+    --status-warn: #a16207;
+    --status-error: #b91c1c;
+    --status-ok-bg: #f0fdf4;
+    --status-warn-bg: #fefce8;
+    --status-error-bg: #fef2f2;
+  }
+
+  .dark {
+    --surface: #0b1120;
+    --surface-raised: #111a2e;
+    --surface-sunken: #080d18;
+    --surface-hover: #1c2742;
+    --border: #243049;
+    --border-strong: #3b4a6b;
+    --text: #e2e8f0;
+    --text-muted: #94a3b8;
+    --text-subtle: #64748b;
+    --accent: #2dd4bf;
+    --accent-text: #042f2e;
+    --focus: #5eead4;
+
+    --severity-critical: #fda4af;
+    --severity-high: #fdba74;
+    --severity-medium: #fde047;
+    --severity-low: #93c5fd;
+    --severity-info: #cbd5e1;
+    --severity-critical-bg: #3f1023;
+    --severity-high-bg: #3a2210;
+    --severity-medium-bg: #332a08;
+    --severity-low-bg: #10254a;
+    --severity-info-bg: #16213a;
+
+    --status-ok: #86efac;
+    --status-warn: #fde047;
+    --status-error: #fca5a5;
+    --status-ok-bg: #0c2818;
+    --status-warn-bg: #332a08;
+    --status-error-bg: #3f1212;
+  }
+
+  * {
+    border-color: var(--border);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--surface);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* A visible focus ring is required for keyboard navigation; never removed. */
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: var(--radius-xs);
+  }
+
+  ::selection {
+    background-color: var(--accent);
+    color: var(--accent-text);
+  }
+
+  /* Respect a reduced-motion preference for every transition. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--surface-sunken);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 5px;
+    border: 2px solid var(--surface-sunken);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--text-subtle);
+  }
+}
+
+@layer components {
+  .ds-surface {
+    background-color: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+  }
+
+  .ds-mono {
+    font-family: var(--font-mono);
+    font-variant-ligatures: none;
+  }
+
+  /* Dense table defaults shared by every data view. */
+  .ds-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+  }
+  .ds-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: var(--surface-sunken);
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.6875rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .ds-table tbody td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .ds-table tbody tr:hover {
+    background-color: var(--surface-hover);
+  }
+
+  .ds-scroll-x {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@layer utilities {
+  .text-muted {
+    color: var(--text-muted);
+  }
+  .text-subtle {
+    color: var(--text-subtle);
+  }
+}

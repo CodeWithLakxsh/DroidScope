@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from app.analyzers.base import Analyzer, AnalysisInput, AnalyzerResult, ArtifactRef
+from app.analyzers.base import AnalysisInput, Analyzer, AnalyzerResult, ArtifactRef
 from app.core.enums import AnalyzerStatus, Confidence, FindingCategory, ScanProfile, Severity
 from app.core.logging import get_logger
 from app.detection.base import RuleMetadata
@@ -145,8 +145,7 @@ class YaraAnalyzer(Analyzer):
             result.status = AnalyzerStatus.failed
             result.error = "; ".join(report.errors) or "YARA rules could not be compiled"
             result.limitations.append(
-                "No YARA rules were applied because the rule set failed to compile: "
-                + result.error
+                "No YARA rules were applied because the rule set failed to compile: " + result.error
             )
             result.detail = {"rule_set": report.__dict__}
             return result
@@ -283,8 +282,7 @@ class YaraAnalyzer(Analyzer):
                 "A YARA match records that specific content is present in the "
                 "application. It is an indicator for review, not a determination that "
                 "the application is malicious and not an attribution to any malware "
-                "family."
-                + (f" {note}" if note else "")
+                "family." + (f" {note}" if note else "")
             ),
             remediation=(
                 "Review the matched content in context. Confirm the capability is "
@@ -303,8 +301,7 @@ class YaraAnalyzer(Analyzer):
         evidence = [
             Evidence(
                 description=(
-                    f"Rule {match['rule']} matched {match['entry']} "
-                    f"({match['entry_size']} bytes)"
+                    f"Rule {match['rule']} matched {match['entry']} ({match['entry_size']} bytes)"
                 ),
                 file_path=match["entry"],
                 kind="binary",

@@ -17,6 +17,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import (
+    JSON,
     BigInteger,
     Boolean,
     DateTime,
@@ -24,7 +25,6 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
-    JSON,
     String,
     Text,
     UniqueConstraint,
@@ -38,8 +38,8 @@ from app.core.enums import (
     JobStatus,
     ReportFormat,
     ScanProfile,
-    Severity,
     SessionStatus,
+    Severity,
 )
 from app.database.base import Base, IdMixin, StrEnumType, TimestampMixin, utcnow
 
@@ -90,9 +90,7 @@ class ApkArtifact(Base, IdMixin, TimestampMixin):
     metadata_error: Mapped[str | None] = mapped_column(Text)
 
     application: Mapped[Application | None] = relationship(back_populates="apks")
-    scans: Mapped[list[Scan]] = relationship(
-        back_populates="apk", cascade="all, delete-orphan"
-    )
+    scans: Mapped[list[Scan]] = relationship(back_populates="apk", cascade="all, delete-orphan")
 
 
 class Scan(Base, IdMixin, TimestampMixin):
@@ -346,9 +344,7 @@ class Report(Base, IdMixin):
 
     scan_id: Mapped[str] = mapped_column(ForeignKey("scans.id", ondelete="CASCADE"), index=True)
     report_format: Mapped[ReportFormat] = mapped_column(StrEnumType(ReportFormat, 8))
-    status: Mapped[JobStatus] = mapped_column(
-        StrEnumType(JobStatus, 16), default=JobStatus.queued
-    )
+    status: Mapped[JobStatus] = mapped_column(StrEnumType(JobStatus, 16), default=JobStatus.queued)
     storage_key: Mapped[str | None] = mapped_column(String(512))
     filename: Mapped[str | None] = mapped_column(String(255))
     size_bytes: Mapped[int | None] = mapped_column(BigInteger)

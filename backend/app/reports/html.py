@@ -278,11 +278,7 @@ def build_summary_text(document: dict[str, Any]) -> str:
             "not covered."
         )
 
-    parts = [
-        f"{counts.get(level, 0)} {level}"
-        for level in SEVERITY_ORDER
-        if counts.get(level, 0)
-    ]
+    parts = [f"{counts.get(level, 0)} {level}" for level in SEVERITY_ORDER if counts.get(level, 0)]
     incomplete = (document.get("scope_and_limitations") or {}).get("analyzers_incomplete", [])
     coverage = (
         " All requested analyzers completed."

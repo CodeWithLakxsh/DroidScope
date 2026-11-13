@@ -134,15 +134,11 @@ def calculate_risk(
 
     for finding in findings:
         severity = _as_enum(getattr(finding, "severity", None), Severity, Severity.info)
-        confidence = _as_enum(
-            getattr(finding, "confidence", None), Confidence, Confidence.low
-        )
+        confidence = _as_enum(getattr(finding, "confidence", None), Confidence, Confidence.low)
         status = _as_enum(
             getattr(finding, "status", FindingStatus.open), FindingStatus, FindingStatus.open
         )
-        category = str(
-            getattr(finding, "category", None) or "uncategorised"
-        )
+        category = str(getattr(finding, "category", None) or "uncategorised")
         category = getattr(category, "value", category)
 
         severity_counts[severity.value] = severity_counts.get(severity.value, 0) + 1
@@ -171,9 +167,7 @@ def calculate_risk(
 
     score = round(100.0 * (1.0 - math.exp(-raw_weight / SATURATION_CONSTANT)), 1)
     band, band_description = _band_for(score)
-    band, band_description, floor_note = _apply_severity_floor(
-        band, band_description, findings
-    )
+    band, band_description, floor_note = _apply_severity_floor(band, band_description, findings)
 
     coverage, caveats = _coverage(executions or [], profile)
     if not scored:
@@ -210,9 +204,7 @@ def _coverage(executions: list[Any], profile: str | None) -> tuple[dict[str, Any
 
     for execution in executions:
         name = str(getattr(execution, "analyzer", "unknown"))
-        status = _as_enum(
-            getattr(execution, "status", None), AnalyzerStatus, AnalyzerStatus.failed
-        )
+        status = _as_enum(getattr(execution, "status", None), AnalyzerStatus, AnalyzerStatus.failed)
         if status == AnalyzerStatus.completed:
             completed.append(name)
         else:
@@ -274,9 +266,7 @@ def _apply_severity_floor(
     trigger: Any = None
     for finding in findings:
         severity = _as_enum(getattr(finding, "severity", None), Severity, Severity.info)
-        confidence = _as_enum(
-            getattr(finding, "confidence", None), Confidence, Confidence.low
-        )
+        confidence = _as_enum(getattr(finding, "confidence", None), Confidence, Confidence.low)
         status = _as_enum(
             getattr(finding, "status", FindingStatus.open), FindingStatus, FindingStatus.open
         )
@@ -285,9 +275,7 @@ def _apply_severity_floor(
         if confidence == Confidence.low:
             continue
         candidate = SEVERITY_BAND_FLOOR.get(severity)
-        if candidate and (
-            floor is None or BAND_ORDER.index(candidate) > BAND_ORDER.index(floor)
-        ):
+        if candidate and (floor is None or BAND_ORDER.index(candidate) > BAND_ORDER.index(floor)):
             floor, trigger = candidate, finding
 
     if floor is None or BAND_ORDER.index(band) >= BAND_ORDER.index(floor):

@@ -62,6 +62,9 @@ ignore = ["S101", "B008", "S603", "S607", "SIM108"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S", "E501"]
+# The report template embeds CSS and HTML, where wrapping at 100 columns makes
+# the markup harder to read than leaving the lines intact.
+"app/reports/html.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.12"

@@ -56,7 +56,9 @@ def _brew_hint(formula: str, *, cask: bool = False) -> str:
     return f"macOS: brew {kind} {formula}"
 
 
-async def _probe_version(path: Path, args: list[str], *, parse_first_line: bool = True) -> str | None:
+async def _probe_version(
+    path: Path, args: list[str], *, parse_first_line: bool = True
+) -> str | None:
     try:
         result = await run_command([path, *args], timeout=VERSION_PROBE_TIMEOUT)
     except Exception as exc:  # noqa: BLE001 - probing must never break discovery
@@ -265,7 +267,9 @@ async def _emulator_capability(settings: Settings) -> Capability:
         path=emulator,
         required_for=["dynamic-analysis"],
         install_hint=hint,
-        detail=(f"{len(avds)} AVD(s) defined: " + ", ".join(avds[:6])) if avds else "no AVDs defined",
+        detail=(f"{len(avds)} AVD(s) defined: " + ", ".join(avds[:6]))
+        if avds
+        else "no AVDs defined",
     )
 
 

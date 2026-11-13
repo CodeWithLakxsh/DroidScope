@@ -85,6 +85,8 @@ async def download_report(
             "X-Content-Type-Options": "nosniff",
             # A report derived from an untrusted APK is never rendered inline
             # with script privileges.
-            "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; img-src data:",
+            "Content-Security-Policy": (
+                "default-src 'none'; style-src 'unsafe-inline'; img-src data:"
+            ),
         },
     )

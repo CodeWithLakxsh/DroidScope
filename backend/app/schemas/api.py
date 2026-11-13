@@ -8,7 +8,7 @@ artifact kind, and the server resolves the location.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Generic, Literal, TypeVar
+from typing import Any, Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -45,7 +45,7 @@ class ErrorResponse(ApiModel):
     error: ErrorDetail
 
 
-class Page(ApiModel, Generic[T]):
+class Page[T](ApiModel):
     items: list[T]
     total: int
     limit: int
@@ -125,9 +125,7 @@ class ApkDetail(ApkSummary):
 
 class ApkUploadResponse(ApiModel):
     apk: ApkDetail
-    created: bool = Field(
-        description="False when an APK with the same SHA-256 was already stored"
-    )
+    created: bool = Field(description="False when an APK with the same SHA-256 was already stored")
     message: str
 
 
@@ -198,9 +196,7 @@ class EvidenceOut(ApiModel):
     # serialization_alias only: a plain alias="metadata" would make Pydantic read
     # SQLAlchemy's reserved MetaData attribute off the ORM row instead of this
     # column, which fails validation.
-    evidence_metadata: dict[str, Any] = Field(
-        default_factory=dict, serialization_alias="metadata"
-    )
+    evidence_metadata: dict[str, Any] = Field(default_factory=dict, serialization_alias="metadata")
 
 
 class FindingReviewOut(ApiModel):
@@ -240,9 +236,7 @@ class FindingDetail(FindingSummary):
     created_at: datetime
     evidence: list[EvidenceOut] = Field(default_factory=list)
     reviews: list[FindingReviewOut] = Field(default_factory=list)
-    finding_metadata: dict[str, Any] = Field(
-        default_factory=dict, serialization_alias="metadata"
-    )
+    finding_metadata: dict[str, Any] = Field(default_factory=dict, serialization_alias="metadata")
 
 
 class FindingReviewRequest(ApiModel):

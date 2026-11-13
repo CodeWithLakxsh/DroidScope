@@ -16,6 +16,7 @@ What this cannot do, and says so rather than pretending:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -265,8 +266,18 @@ class DynamicAnalysisService:
             )
         else:
             await run_command(
-                [adb, "-s", serial, "shell", "monkey", "-p", package, "-c",
-                 "android.intent.category.LAUNCHER", "1"],
+                [
+                    adb,
+                    "-s",
+                    serial,
+                    "shell",
+                    "monkey",
+                    "-p",
+                    package,
+                    "-c",
+                    "android.intent.category.LAUNCHER",
+                    "1",
+                ],
                 timeout=ADB_TIMEOUT,
             )
             events.append(
@@ -347,10 +358,10 @@ class DynamicAnalysisService:
             import time
 
             time.sleep(duration)
-            try:
+            # Detaching can fail if the process already exited; the session
+            # is over either way.
+            with contextlib.suppress(Exception):
                 session.detach()
-            except Exception:  # noqa: BLE001
-                pass
 
         try:
             await loop.run_in_executor(None, attach_and_run)

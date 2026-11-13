@@ -55,8 +55,7 @@ async def capabilities(
         capabilities=[CapabilityOut(**cap.public_dict()) for cap in discovered],
         analyzers=analyzer_availability(caps),
         profiles={
-            profile.value: description
-            for profile, description in PROFILE_DESCRIPTIONS.items()
+            profile.value: description for profile, description in PROFILE_DESCRIPTIONS.items()
         },
         rules_loaded=len(registry),
         version=__version__,

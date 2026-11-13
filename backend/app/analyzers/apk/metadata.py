@@ -10,7 +10,6 @@ turned into an "absent" value.
 from __future__ import annotations
 
 import hashlib
-import os
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -47,8 +46,8 @@ def _silence_androguard_logging() -> None:
         from loguru import logger as loguru_logger
 
         loguru_logger.disable("androguard")
-    except Exception:  # noqa: BLE001 - optional dependency of androguard
-        pass
+    except Exception as exc:  # noqa: BLE001 - loguru is optional for androguard
+        logger.debug("metadata.loguru_unavailable", error=str(exc))
     import logging
 
     for name in ("androguard", "androguard.axml", "androguard.apk", "androguard.core"):
@@ -174,6 +173,7 @@ class ApkMetadataExtractor:
 
     def _apply_androguard_fallbacks(self, apk, metadata: ApkMetadata) -> None:  # noqa: ANN001
         """Fill gaps using androguard's resource-aware getters."""
+
         def safe(call, default=None):  # noqa: ANN001
             try:
                 return call()
@@ -210,9 +210,7 @@ class ApkMetadataExtractor:
                 ("provider", apk.get_providers),
             ):
                 for name in safe(getter, []) or []:
-                    metadata.components.append(
-                        _minimal_component(kind, name)
-                    )
+                    metadata.components.append(_minimal_component(kind, name))
             if metadata.components:
                 metadata.partial = True
                 metadata.parse_errors.append(
@@ -321,7 +319,9 @@ class ApkMetadataExtractor:
             "asset_files": asset_count,
             "asset_bytes": asset_bytes,
             "resource_files": resource_count,
-            "abi_descriptions": {abi: ABI_DIRECTORIES.get(abi, "unknown ABI") for abi in sorted(abis)},
+            "abi_descriptions": {
+                abi: ABI_DIRECTORIES.get(abi, "unknown ABI") for abi in sorted(abis)
+            },
         }
         if validation and validation.signature_schemes and not metadata.signature_schemes:
             metadata.signature_schemes = validation.signature_schemes
@@ -366,22 +366,22 @@ def _certificate_info(cert) -> CertificateInfo:  # noqa: ANN001 - asn1crypto x50
     try:
         public_key_algo = cert.public_key.algorithm
         key_size = cert.public_key.bit_size
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("metadata.certificate_key_unreadable", error=str(exc))
 
     not_before = not_after = None
     try:
         validity = cert["tbs_certificate"]["validity"]
         not_before = validity["not_before"].native.isoformat()
         not_after = validity["not_after"].native.isoformat()
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001 - certificate shapes vary widely
+        logger.debug("metadata.certificate_validity_unreadable", error=str(exc))
 
     serial = None
     try:
         serial = format(cert.serial_number, "x")
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("metadata.certificate_serial_unreadable", error=str(exc))
 
     return CertificateInfo(
         subject=subject,

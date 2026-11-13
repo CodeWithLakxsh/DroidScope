@@ -10,7 +10,6 @@ crafted string in an APK cannot corrupt the document structure.
 from __future__ import annotations
 
 import html
-from datetime import UTC, datetime
 from io import BytesIO
 from typing import Any
 
@@ -38,10 +37,10 @@ from app.reports.html import SEVERITY_ORDER, build_summary_text
 # is used here; the HTML report keeps its own glyphs, which browsers render.
 SEVERITY_GLYPH = {
     "critical": "\u25c6",  # black diamond
-    "high": "\u25b2",      # black up triangle
-    "medium": "\u25a0",    # black square
-    "low": "\u25cf",       # black circle
-    "info": "\u00b7",      # middle dot
+    "high": "\u25b2",  # black up triangle
+    "medium": "\u25a0",  # black square
+    "low": "\u25cf",  # black circle
+    "info": "\u00b7",  # middle dot
 }
 
 PAGE_SIZE = A4
@@ -68,39 +67,84 @@ def _styles() -> dict[str, ParagraphStyle]:
     base = getSampleStyleSheet()
     return {
         "title": ParagraphStyle(
-            "DsTitle", parent=base["Title"], fontSize=22, leading=27, textColor=INK,
-            alignment=TA_LEFT, spaceAfter=4,
+            "DsTitle",
+            parent=base["Title"],
+            fontSize=22,
+            leading=27,
+            textColor=INK,
+            alignment=TA_LEFT,
+            spaceAfter=4,
         ),
         "subtitle": ParagraphStyle(
-            "DsSubtitle", parent=base["Normal"], fontSize=11, leading=15, textColor=MUTED,
-            fontName="Courier", spaceAfter=14,
+            "DsSubtitle",
+            parent=base["Normal"],
+            fontSize=11,
+            leading=15,
+            textColor=MUTED,
+            fontName="Courier",
+            spaceAfter=14,
         ),
         "h2": ParagraphStyle(
-            "DsH2", parent=base["Heading2"], fontSize=13.5, leading=17, textColor=INK,
-            spaceBefore=16, spaceAfter=5,
+            "DsH2",
+            parent=base["Heading2"],
+            fontSize=13.5,
+            leading=17,
+            textColor=INK,
+            spaceBefore=16,
+            spaceAfter=5,
         ),
         "h3": ParagraphStyle(
-            "DsH3", parent=base["Heading3"], fontSize=10.5, leading=14, textColor=INK,
-            spaceBefore=9, spaceAfter=3,
+            "DsH3",
+            parent=base["Heading3"],
+            fontSize=10.5,
+            leading=14,
+            textColor=INK,
+            spaceBefore=9,
+            spaceAfter=3,
         ),
         "body": ParagraphStyle(
-            "DsBody", parent=base["Normal"], fontSize=9, leading=12.6, textColor=INK,
+            "DsBody",
+            parent=base["Normal"],
+            fontSize=9,
+            leading=12.6,
+            textColor=INK,
             spaceAfter=4,
         ),
         "meta": ParagraphStyle(
-            "DsMeta", parent=base["Normal"], fontSize=7.8, leading=10.5, textColor=MUTED,
-            fontName="Courier", spaceAfter=3,
+            "DsMeta",
+            parent=base["Normal"],
+            fontSize=7.8,
+            leading=10.5,
+            textColor=MUTED,
+            fontName="Courier",
+            spaceAfter=3,
         ),
         "code": ParagraphStyle(
-            "DsCode", parent=base["Normal"], fontSize=7.5, leading=10, fontName="Courier",
-            textColor=colors.HexColor("#1e293b"), backColor=SURFACE,
-            borderPadding=4, leftIndent=3, spaceBefore=2, spaceAfter=5,
+            "DsCode",
+            parent=base["Normal"],
+            fontSize=7.5,
+            leading=10,
+            fontName="Courier",
+            textColor=colors.HexColor("#1e293b"),
+            backColor=SURFACE,
+            borderPadding=4,
+            leftIndent=3,
+            spaceBefore=2,
+            spaceAfter=5,
         ),
         "cell": ParagraphStyle(
-            "DsCell", parent=base["Normal"], fontSize=8, leading=11, textColor=INK,
+            "DsCell",
+            parent=base["Normal"],
+            fontSize=8,
+            leading=11,
+            textColor=INK,
         ),
         "cellmono": ParagraphStyle(
-            "DsCellMono", parent=base["Normal"], fontSize=7.5, leading=10, fontName="Courier",
+            "DsCellMono",
+            parent=base["Normal"],
+            fontSize=7.5,
+            leading=10,
+            fontName="Courier",
             textColor=INK,
         ),
     }
@@ -118,7 +162,6 @@ def render_pdf(document: dict[str, Any]) -> bytes:
     styles = _styles()
     buffer = BytesIO()
     application = document.get("application", {})
-    scan = document.get("scan", {})
 
     doc = SimpleDocTemplate(
         buffer,
@@ -154,9 +197,7 @@ def _decorate(canvas, doc) -> None:  # noqa: ANN001
     canvas.setFont("Helvetica", 7)
     canvas.setFillColor(MUTED)
     canvas.drawString(MARGIN, 10 * mm, "DroidScope - Android application security analysis")
-    canvas.drawRightString(
-        PAGE_SIZE[0] - MARGIN, 10 * mm, f"page {canvas.getPageNumber()}"
-    )
+    canvas.drawRightString(PAGE_SIZE[0] - MARGIN, 10 * mm, f"page {canvas.getPageNumber()}")
     canvas.setStrokeColor(LINE)
     canvas.setLineWidth(0.4)
     canvas.line(MARGIN, 13 * mm, PAGE_SIZE[0] - MARGIN, 13 * mm)
@@ -201,9 +242,7 @@ def _cover(document: dict[str, Any], styles: dict) -> list[Any]:
         ),
     ]
 
-    header = [
-        Paragraph(f"<b>{esc(name.upper())}</b>", styles["cell"]) for name in SEVERITY_ORDER
-    ]
+    header = [Paragraph(f"<b>{esc(name.upper())}</b>", styles["cell"]) for name in SEVERITY_ORDER]
     values = [
         Paragraph(f"{SEVERITY_GLYPH[name]} {counts.get(name, 0)}", styles["cell"])
         for name in SEVERITY_ORDER
@@ -230,7 +269,10 @@ def _cover(document: dict[str, Any], styles: dict) -> list[Any]:
     story.append(
         _kv_table(
             [
-                ("Risk score", f"{risk.get('score', 'not calculated')} / 100 ({risk.get('band', 'unknown')})"),
+                (
+                    "Risk score",
+                    f"{risk.get('score', 'not calculated')} / 100 ({risk.get('band', 'unknown')})",
+                ),
                 ("Findings", str(scan.get("findings_total", 0))),
                 ("Scan profile", str(scan.get("profile", ""))),
                 ("Scan status", str(scan.get("status", ""))),
@@ -332,14 +374,23 @@ def _application(document: dict[str, Any], styles: dict) -> list[Any]:
     rows = [
         ("Package", application.get("package_name") or "not determined"),
         ("Label", application.get("label") or "not determined"),
-        ("Version", f"{application.get('version_name') or '?'} (code {application.get('version_code') or '?'})"),
+        (
+            "Version",
+            (
+                f"{application.get('version_name') or '?'} "
+                f"(code {application.get('version_code') or '?'})"
+            ),
+        ),
         ("Minimum SDK", application.get("min_sdk") or "?"),
         ("Target SDK", application.get("target_sdk") or "?"),
         ("File", f"{application.get('file_name')} ({application.get('file_size')} bytes)"),
         ("SHA-256", application.get("sha256")),
         ("SHA-1", application.get("sha1")),
         ("MD5", application.get("md5")),
-        ("Signature schemes", ", ".join(application.get("signature_schemes", [])) or "none detected"),
+        (
+            "Signature schemes",
+            ", ".join(application.get("signature_schemes", [])) or "none detected",
+        ),
         ("ABIs", ", ".join(application.get("abis", [])) or "none"),
         ("DEX files", str(len(application.get("dex_files", [])))),
         ("Native libraries", str(len(application.get("native_libraries", [])))),
@@ -484,10 +535,10 @@ def _findings(document: dict[str, Any], styles: dict) -> list[Any]:
 
         references = finding.get("references") or []
         if references:
-            block.append(
-                Paragraph("References: " + esc(" ".join(references), 400), styles["meta"])
-            )
-        block.append(HRFlowable(width="100%", thickness=0.3, color=LINE, spaceBefore=4, spaceAfter=4))
+            block.append(Paragraph("References: " + esc(" ".join(references), 400), styles["meta"]))
+        block.append(
+            HRFlowable(width="100%", thickness=0.3, color=LINE, spaceBefore=4, spaceAfter=4)
+        )
         story.append(KeepTogether(block))
 
     if len(findings) > MAX_FINDINGS_RENDERED:
@@ -554,12 +605,17 @@ def _appendix(document: dict[str, Any], styles: dict) -> list[Any]:
         ("Generator", report.get("generator")),
         ("Secret redaction", "applied" if report.get("redaction_applied") else "disabled"),
         ("Rules loaded", environment.get("rules_loaded")),
-        ("Tool versions", ", ".join(f"{k} {v}" for k, v in sorted(versions.items())) or "none recorded"),
+        (
+            "Tool versions",
+            ", ".join(f"{k} {v}" for k, v in sorted(versions.items())) or "none recorded",
+        ),
         ("Tools unavailable", ", ".join(environment.get("tools_unavailable", [])) or "none"),
     ]
     host = environment.get("host", {})
     if host:
-        rows.append(("Analysis host", f"{host.get('system')} {host.get('release')} {host.get('machine')}"))
+        rows.append(
+            ("Analysis host", f"{host.get('system')} {host.get('release')} {host.get('machine')}")
+        )
 
     return [
         PageBreak(),

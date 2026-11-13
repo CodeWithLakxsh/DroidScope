@@ -33,11 +33,7 @@ async def dashboard(session: AsyncSession = Depends(session_dependency)) -> dict
 
     statistics = await ScanService(session).dashboard_statistics()
     recent = (
-        (
-            await session.execute(
-                select(Scan).order_by(desc(Scan.created_at)).limit(10)
-            )
-        )
+        (await session.execute(select(Scan).order_by(desc(Scan.created_at)).limit(10)))
         .scalars()
         .all()
     )
@@ -59,7 +55,9 @@ async def dashboard(session: AsyncSession = Depends(session_dependency)) -> dict
     return statistics
 
 
-@router.post("/compare", response_model=CompareResponse, status_code=201, summary="Compare two APKs")
+@router.post(
+    "/compare", response_model=CompareResponse, status_code=201, summary="Compare two APKs"
+)
 async def compare(
     payload: CompareRequest,
     session: AsyncSession = Depends(session_dependency),

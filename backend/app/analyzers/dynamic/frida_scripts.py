@@ -271,7 +271,4 @@ def build_script(modules: list[str], *, package_name: str | None = None) -> str:
 
 
 def describe_modules() -> list[dict[str, str]]:
-    return [
-        {"name": module.name, "description": module.description}
-        for module in MODULES.values()
-    ]
+    return [{"name": module.name, "description": module.description} for module in MODULES.values()]

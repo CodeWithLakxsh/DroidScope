@@ -128,7 +128,9 @@ def parse_rule_document(document: dict[str, Any], rule_file: Path) -> PatternRul
 
     rule_id = str(_require(document, "id", rule_file))
     name = str(_require(document, "name", rule_file))
-    category = _enum(str(_require(document, "category", rule_file)), FindingCategory, rule_id, "category")
+    category = _enum(
+        str(_require(document, "category", rule_file)), FindingCategory, rule_id, "category"
+    )
     severity = _enum(str(_require(document, "severity", rule_file)), Severity, rule_id, "severity")
     confidence = _enum(
         str(_require(document, "confidence", rule_file)), Confidence, rule_id, "confidence"
@@ -197,8 +199,12 @@ def parse_rule_document(document: dict[str, Any], rule_file: Path) -> PatternRul
         meta=meta,
         scope=scope,
         patterns=_compile(patterns, rule_id=rule_id, field_name="patterns"),
-        require_all=_compile(document.get("require_all", []) or [], rule_id=rule_id, field_name="require_all"),
-        require_any=_compile(document.get("require_any", []) or [], rule_id=rule_id, field_name="require_any"),
+        require_all=_compile(
+            document.get("require_all", []) or [], rule_id=rule_id, field_name="require_all"
+        ),
+        require_any=_compile(
+            document.get("require_any", []) or [], rule_id=rule_id, field_name="require_any"
+        ),
         exclude=_compile(document.get("exclude", []) or [], rule_id=rule_id, field_name="exclude"),
         exclude_file=_compile(
             document.get("exclude_file", []) or [], rule_id=rule_id, field_name="exclude_file"
@@ -245,9 +251,7 @@ class PatternRule(Rule):
         normalised = relative_path.replace("\\", "/")
         if any(fragment in normalised for fragment in self.spec.exclude_paths):
             return True
-        if not self.spec.include_third_party and context.is_third_party(normalised):
-            return True
-        return False
+        return not self.spec.include_third_party and context.is_third_party(normalised)
 
     def evaluate_file(self, source: SourceFile) -> Iterator[RawFinding]:
         """Evaluate one file.  Exposed separately so rules are unit testable."""
@@ -316,7 +320,10 @@ class PatternRule(Rule):
 
         evidence = [
             Evidence(
-                description=f"Pattern matched at {source.relative_path}:{source.line_of_offset(match.start())}",
+                description=(
+                    f"Pattern matched at {source.relative_path}:"
+                    f"{source.line_of_offset(match.start())}"
+                ),
                 snippet=self._snippet(line_text, match),
                 file_path=source.relative_path,
                 line_number=source.line_of_offset(match.start()),
@@ -326,9 +333,7 @@ class PatternRule(Rule):
             for match, line_text in matches
         ]
         for reason in reasons:
-            evidence.append(
-                Evidence(description=f"Confidence adjusted: {reason}", kind="code")
-            )
+            evidence.append(Evidence(description=f"Confidence adjusted: {reason}", kind="code"))
 
         return self.finding(
             title=f"{self.meta.name} ({Path(source.relative_path).name})",

@@ -125,18 +125,12 @@ def _register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(DroidScopeError)
     async def handle_domain_error(request: Request, exc: DroidScopeError) -> JSONResponse:
         if exc.http_status >= 500:
-            logger.error(
-                "api.error", code=exc.code, message=exc.message, path=request.url.path
-            )
+            logger.error("api.error", code=exc.code, message=exc.message, path=request.url.path)
         else:
-            logger.info(
-                "api.rejected", code=exc.code, message=exc.message, path=request.url.path
-            )
+            logger.info("api.rejected", code=exc.code, message=exc.message, path=request.url.path)
         return JSONResponse(
             status_code=exc.http_status,
-            content={
-                "error": {"code": exc.code, "message": exc.message, "details": exc.details}
-            },
+            content={"error": {"code": exc.code, "message": exc.message, "details": exc.details}},
         )
 
     @app.exception_handler(RequestValidationError)
@@ -155,9 +149,7 @@ def _register_exception_handlers(app: FastAPI) -> None:
         )
 
     @app.exception_handler(StarletteHTTPException)
-    async def handle_http_exception(
-        request: Request, exc: StarletteHTTPException
-    ) -> JSONResponse:
+    async def handle_http_exception(request: Request, exc: StarletteHTTPException) -> JSONResponse:
         return JSONResponse(
             status_code=exc.status_code,
             content={

@@ -10,9 +10,9 @@ need attributes androguard does not surface, in particular the *absence* of
 from __future__ import annotations
 
 from typing import Any
+from xml.etree.ElementTree import Element, ParseError
 
 from defusedxml.ElementTree import fromstring as safe_fromstring
-from xml.etree.ElementTree import Element, ParseError
 
 from app.core.logging import get_logger
 from app.schemas.apk import (
@@ -156,9 +156,7 @@ class ParsedManifest:
         except (ParseError, ValueError) as exc:
             raise ManifestParseError(f"manifest XML could not be parsed: {exc}") from exc
         if self.root.tag != "manifest":
-            raise ManifestParseError(
-                f"unexpected manifest root element {self.root.tag!r}"
-            )
+            raise ManifestParseError(f"unexpected manifest root element {self.root.tag!r}")
         self.package = self.root.get("package") or _attr(self.root, "package")
         self.application = self.root.find("application")
 
@@ -260,9 +258,7 @@ class ParsedManifest:
             results.append(
                 PermissionDeclaration(
                     name=name,
-                    protection_level=decode_protection_level(
-                        _attr(element, "protectionLevel")
-                    ),
+                    protection_level=decode_protection_level(_attr(element, "protectionLevel")),
                     permission_group=_attr(element, "permissionGroup"),
                 )
             )
@@ -293,9 +289,7 @@ class ParsedManifest:
 
         path_permissions = []
         for path_element in element.findall("path-permission"):
-            entry = {
-                key.replace(_A, ""): value for key, value in path_element.attrib.items()
-            }
+            entry = {key.replace(_A, ""): value for key, value in path_element.attrib.items()}
             path_permissions.append(entry)
 
         permission = _attr(element, "permission")
@@ -305,7 +299,9 @@ class ParsedManifest:
             exported=exported,
             exported_implied=implied,
             exported_attribute=exported_attr,
-            enabled=_bool_attr(element, "enabled") if _bool_attr(element, "enabled") is not None else True,
+            enabled=_bool_attr(element, "enabled")
+            if _bool_attr(element, "enabled") is not None
+            else True,
             permission=permission,
             read_permission=_attr(element, "readPermission"),
             write_permission=_attr(element, "writePermission"),
@@ -348,17 +344,11 @@ class ParsedManifest:
 
     @staticmethod
     def _intent_filter(element: Element) -> IntentFilter:
-        actions = [
-            _attr(child, "name") or "" for child in element.findall("action")
-        ]
-        categories = [
-            _attr(child, "name") or "" for child in element.findall("category")
-        ]
+        actions = [_attr(child, "name") or "" for child in element.findall("action")]
+        categories = [_attr(child, "name") or "" for child in element.findall("category")]
         data_entries: list[dict[str, str]] = []
         for child in element.findall("data"):
-            entry = {
-                key.replace(_A, ""): value for key, value in child.attrib.items()
-            }
+            entry = {key.replace(_A, ""): value for key, value in child.attrib.items()}
             if entry:
                 data_entries.append(entry)
         return IntentFilter(
@@ -391,7 +381,9 @@ class ParsedManifest:
             name = _attr(element, "name") or _attr(element, "glEsVersion") or ""
             if not name:
                 continue
-            features.append({"name": name, "required": _bool_attr(element, "required") is not False})
+            features.append(
+                {"name": name, "required": _bool_attr(element, "required") is not False}
+            )
         return features
 
     def queries(self) -> list[dict[str, str]]:
@@ -402,9 +394,7 @@ class ParsedManifest:
                 if child.tag == "package":
                     results.append({"type": "package", "value": _attr(child, "name") or ""})
                 elif child.tag == "provider":
-                    results.append(
-                        {"type": "provider", "value": _attr(child, "authorities") or ""}
-                    )
+                    results.append({"type": "provider", "value": _attr(child, "authorities") or ""})
                 elif child.tag == "intent":
                     actions = [_attr(a, "name") or "" for a in child.iter("action")]
                     results.append({"type": "intent", "value": ",".join(filter(None, actions))})

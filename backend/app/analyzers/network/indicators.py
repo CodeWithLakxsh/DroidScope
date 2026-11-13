@@ -24,9 +24,7 @@ from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
-URL_PATTERN = re.compile(
-    rb"(?:https?|ftp|ws|wss)://[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]{4,512}"
-)
+URL_PATTERN = re.compile(rb"(?:https?|ftp|ws|wss)://[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]{4,512}")
 DOMAIN_PATTERN = re.compile(
     rb"(?<![A-Za-z0-9.\-])"
     rb"(?:[A-Za-z0-9](?:[A-Za-z0-9\-]{0,61}[A-Za-z0-9])?\.)+"
@@ -38,16 +36,41 @@ IPV4_PATTERN = re.compile(rb"(?<![\d.])((?:\d{1,3}\.){3}\d{1,3})(?![\d.])")
 
 # Hosts that are definitionally not an operator endpoint.
 RESERVED_DOMAINS = {
-    "example.com", "example.org", "example.net", "localhost", "localhost.localdomain",
-    "test.com", "invalid", "local",
+    "example.com",
+    "example.org",
+    "example.net",
+    "localhost",
+    "localhost.localdomain",
+    "test.com",
+    "invalid",
+    "local",
 }
 # Infrastructure and documentation hosts that appear in every Android app.
 NOISE_HOSTS = {
-    "schemas.android.com", "www.w3.org", "w3.org", "java.sun.com", "xml.org",
-    "apache.org", "www.apache.org", "github.com", "developer.android.com",
-    "android.com", "xmlpull.org", "json.org", "slf4j.org", "jquery.com",
-    "googleapis.com", "gstatic.com", "goo.gl", "bit.ly", "purl.org",
-    "ns.adobe.com", "iptc.org", "npes.org", "aiim.org", "fonts.gstatic.com",
+    "schemas.android.com",
+    "www.w3.org",
+    "w3.org",
+    "java.sun.com",
+    "xml.org",
+    "apache.org",
+    "www.apache.org",
+    "github.com",
+    "developer.android.com",
+    "android.com",
+    "xmlpull.org",
+    "json.org",
+    "slf4j.org",
+    "jquery.com",
+    "googleapis.com",
+    "gstatic.com",
+    "goo.gl",
+    "bit.ly",
+    "purl.org",
+    "ns.adobe.com",
+    "iptc.org",
+    "npes.org",
+    "aiim.org",
+    "fonts.gstatic.com",
 }
 NOISE_SUFFIXES = (".w3.org", ".apache.org", ".android.com", ".sun.com", ".iana.org")
 
@@ -161,7 +184,9 @@ class IndicatorExtractor:
                         with archive.open(info) as handle:
                             data = handle.read()
                     except (OSError, zipfile.BadZipFile, RuntimeError) as exc:
-                        logger.debug("indicators.entry_unreadable", entry=info.filename, error=str(exc))
+                        logger.debug(
+                            "indicators.entry_unreadable", entry=info.filename, error=str(exc)
+                        )
                         self.entries_skipped += 1
                         continue
                     self.entries_scanned += 1
@@ -336,9 +361,7 @@ class IndicatorExtractor:
         return printable.strip()[:200]
 
     @staticmethod
-    def _merge(
-        aggregated: dict[tuple[str, str], Indicator], indicators: list[Indicator]
-    ) -> None:
+    def _merge(aggregated: dict[tuple[str, str], Indicator], indicators: list[Indicator]) -> None:
         for indicator in indicators:
             key = (indicator.indicator_type, indicator.value)
             existing = aggregated.get(key)
@@ -348,7 +371,11 @@ class IndicatorExtractor:
                 existing.occurrences += 1
                 if existing.source_file != indicator.source_file:
                     sources = existing.detail.setdefault("additional_sources", [])
-                    if indicator.source_file and indicator.source_file not in sources and len(sources) < 10:
+                    if (
+                        indicator.source_file
+                        and indicator.source_file not in sources
+                        and len(sources) < 10
+                    ):
                         sources.append(indicator.source_file)
 
 

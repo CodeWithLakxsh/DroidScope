@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 
-from app.analyzers.base import Analyzer, AnalysisInput, AnalyzerResult, ArtifactRef
+from app.analyzers.base import AnalysisInput, Analyzer, AnalyzerResult, ArtifactRef
 from app.analyzers.native.elf import ElfInspector
 from app.core.enums import AnalyzerStatus, ScanProfile
 from app.core.logging import get_logger
@@ -76,9 +76,7 @@ class NativeAnalyzer(Analyzer):
         )
 
         for lib in failed:
-            result.limitations.append(
-                f"{lib['path']} could not be inspected: {lib['error']}"
-            )
+            result.limitations.append(f"{lib['path']} could not be inspected: {lib['error']}")
         result.detail = {
             **result.detail,
             "libraries": len(libraries),
@@ -90,7 +88,10 @@ class NativeAnalyzer(Analyzer):
         return result
 
     async def _maybe_run_ghidra(
-        self, data: AnalysisInput, analyses, result: AnalyzerResult  # noqa: ANN001
+        self,
+        data: AnalysisInput,
+        analyses,
+        result: AnalyzerResult,  # noqa: ANN001
     ) -> dict:
         if data.profile != ScanProfile.full:
             return {

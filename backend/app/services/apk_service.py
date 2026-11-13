@@ -63,7 +63,9 @@ class ApkService:
         safe_name = sanitize_filename(filename)
         self.settings.ensure_directories()
 
-        tmp_handle = tempfile.NamedTemporaryFile(
+        # delete=False because the file is handed to validators and parsers
+        # after this block closes it; the finally clause removes it.
+        tmp_handle = tempfile.NamedTemporaryFile(  # noqa: SIM115
             delete=False, dir=self.settings.tmp_dir, suffix=".upload"
         )
         tmp_path = Path(tmp_handle.name)
@@ -175,9 +177,7 @@ class ApkService:
             return await self.ingest_stream(handle, filename=path.name, actor=actor)
 
     async def get_by_sha256(self, sha256: str) -> ApkArtifact | None:
-        result = await self.session.execute(
-            select(ApkArtifact).where(ApkArtifact.sha256 == sha256)
-        )
+        result = await self.session.execute(select(ApkArtifact).where(ApkArtifact.sha256 == sha256))
         return result.scalar_one_or_none()
 
     async def get(self, apk_id: str) -> ApkArtifact | None:
@@ -200,9 +200,7 @@ class ApkService:
             application.label = label
         return application
 
-    async def _audit(
-        self, actor: str, action: str, resource_id: str | None, detail: dict
-    ) -> None:
+    async def _audit(self, actor: str, action: str, resource_id: str | None, detail: dict) -> None:
         self.session.add(
             AuditEvent(
                 actor=actor,

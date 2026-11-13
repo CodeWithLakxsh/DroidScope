@@ -87,7 +87,7 @@ class ReportService:
             await self.session.commit()
             raise
 
-        base = (apk.package_name if apk and apk.package_name else "droidscope")
+        base = apk.package_name if apk and apk.package_name else "droidscope"
         filename = sanitize_filename(
             f"droidscope-{base}-{scan_id[:8]}.{extension}", default=f"report.{extension}"
         )

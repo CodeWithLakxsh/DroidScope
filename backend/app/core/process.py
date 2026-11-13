@@ -14,6 +14,7 @@ Rules enforced here:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 import shutil
 import signal
@@ -59,7 +60,9 @@ def resolve_executable(candidate: str | Path | None, *, names: tuple[str, ...] =
     return None
 
 
-def build_child_env(extra: dict[str, str] | None = None, *, allow_network: bool = False) -> dict[str, str]:
+def build_child_env(
+    extra: dict[str, str] | None = None, *, allow_network: bool = False
+) -> dict[str, str]:
     """Construct a minimal environment for an analysis child process."""
     keep = ("PATH", "HOME", "LANG", "LC_ALL", "TMPDIR", "JAVA_HOME", "USER")
     env = {key: os.environ[key] for key in keep if key in os.environ}
@@ -118,16 +121,18 @@ async def run_command(
         )
     except TimeoutError:
         _terminate_group(process)
-        try:
+        # The group was killed; give it a moment to be reaped.
+        with contextlib.suppress(TimeoutError):  # pragma: no cover - defensive
             await asyncio.wait_for(process.wait(), timeout=10)
-        except TimeoutError:  # pragma: no cover - defensive
-            pass
         duration = time.monotonic() - started
         logger.warning("process.timeout", tool=Path(argv[0]).name, timeout=timeout)
         raise AnalyzerTimeout(
             f"{Path(argv[0]).name} exceeded its {timeout:.0f}s timeout",
-            details={"tool": Path(argv[0]).name, "timeout_seconds": timeout,
-                     "duration_seconds": round(duration, 3)},
+            details={
+                "tool": Path(argv[0]).name,
+                "timeout_seconds": timeout,
+                "duration_seconds": round(duration, 3),
+            },
         ) from None
     except asyncio.CancelledError:
         _terminate_group(process)
@@ -160,7 +165,5 @@ def _terminate_group(process: asyncio.subprocess.Process) -> None:
     try:
         os.killpg(os.getpgid(process.pid), signal.SIGKILL)
     except (ProcessLookupError, PermissionError):  # pragma: no cover
-        try:
+        with contextlib.suppress(ProcessLookupError):
             process.kill()
-        except ProcessLookupError:
-            pass

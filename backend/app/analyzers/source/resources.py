@@ -7,7 +7,7 @@ both and stores each as a browsable artifact.
 
 from __future__ import annotations
 
-from app.analyzers.base import Analyzer, AnalysisInput, AnalyzerResult, ArtifactRef
+from app.analyzers.base import AnalysisInput, Analyzer, AnalyzerResult, ArtifactRef
 from app.core.enums import AnalyzerStatus, ScanProfile
 from app.core.logging import get_logger
 from app.integrations.apktool import ApktoolAdapter
