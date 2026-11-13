@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- DroidScope fixture: deliberately permissive network configuration. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <!-- DS-MANIFEST-006: trusts user-installed CAs outside debug-overrides -->
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">api.vulnerable.example.com</domain>
+    </domain-config>
+</network-security-config>

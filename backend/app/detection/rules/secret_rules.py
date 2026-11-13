@@ -160,16 +160,37 @@ PROVIDER_PATTERNS: tuple[ProviderPattern, ...] = (
     ),
 )
 
-# Identifier names that indicate the value is a credential.
-SECRET_NAME = re.compile(
-    r"(?i)\b("
-    r"api[_-]?key|apikey|secret[_-]?key|secretkey|client[_-]?secret|"
-    r"access[_-]?token|auth[_-]?token|refresh[_-]?token|bearer[_-]?token|"
-    r"private[_-]?key|encryption[_-]?key|signing[_-]?key|master[_-]?key|"
-    r"password|passwd|credential|session[_-]?secret|app[_-]?secret|"
-    r"consumer[_-]?secret|webhook[_-]?secret|shared[_-]?secret"
-    r")\b"
+# Identifier fragments that indicate the value is a credential.
+#
+# These are matched against a *normalised* identifier -- lowercased with "_"
+# and "-" removed -- because a word boundary cannot sit between "_" and a
+# letter, so r"\bsecret_key\b" never matches "API_SECRET_KEY", which is exactly
+# how such constants are written in practice.
+SECRET_NAME_FRAGMENTS: tuple[str, ...] = (
+    "apikey", "secretkey", "clientsecret", "accesstoken", "authtoken",
+    "refreshtoken", "bearertoken", "privatekey", "encryptionkey", "signingkey",
+    "masterkey", "password", "passwd", "credential", "sessionsecret",
+    "appsecret", "consumersecret", "webhooksecret", "sharedsecret", "apisecret",
+    "authkey", "secrettoken", "accesskey", "clientkey", "apitoken",
 )
+# Identifier fragments that mean the constant describes a credential field
+# rather than holding one (a label, a preferences key, an error message).
+NON_SECRET_NAME_FRAGMENTS: tuple[str, ...] = (
+    "hint", "label", "placeholder", "field", "error", "message", "title",
+    "prompt", "regex", "pattern", "header", "paramname", "keyname", "prefkey",
+    "extra", "action", "column", "tag", "format", "url", "endpoint", "path",
+)
+
+
+def normalise_identifier(name: str) -> str:
+    return name.lower().replace("_", "").replace("-", "").replace(" ", "")
+
+
+def identifier_names_secret(name: str) -> bool:
+    normalised = normalise_identifier(name)
+    if any(fragment in normalised for fragment in NON_SECRET_NAME_FRAGMENTS):
+        return False
+    return any(fragment in normalised for fragment in SECRET_NAME_FRAGMENTS)
 
 # Assignment of a literal to an identifier.  Covers Java, Kotlin and smali.
 ASSIGNMENT = re.compile(
@@ -232,12 +253,16 @@ def character_classes(value: str) -> int:
     return classes
 
 
+def is_placeholder(value: str) -> bool:
+    """Is the value an obvious stand-in rather than a credential?"""
+    return any(word in value.strip().lower() for word in PLACEHOLDER_WORDS)
+
+
 def looks_benign(value: str) -> bool:
     stripped = value.strip()
     if len(stripped) < 8:
         return True
-    lowered = stripped.lower()
-    if any(word in lowered for word in PLACEHOLDER_WORDS):
+    if is_placeholder(stripped):
         return True
     if any(marker in stripped for marker in TEMPLATE_MARKERS):
         return True
@@ -315,7 +340,11 @@ class ProviderSecretRule(Rule):
         for provider in PROVIDER_PATTERNS:
             for match in provider.pattern.finditer(source.text):
                 value = match.group(provider.group)
-                if not value or looks_benign(value) and provider.is_sensitive:
+                # A provider pattern is already shape-specific, so only the
+                # placeholder check applies: the structural heuristics in
+                # looks_benign() would discard a real AWS key as a
+                # SCREAMING_CASE identifier.
+                if not value or is_placeholder(value):
                     continue
                 line_number = source.line_of_offset(match.start())
                 line_text = source.line_text(line_number).strip()
@@ -477,7 +506,7 @@ class GenericSecretRule(Rule):
             entropy = shannon_entropy(value)
             classes = character_classes(value)
 
-            name_is_secret = bool(SECRET_NAME.search(name))
+            name_is_secret = identifier_names_secret(name)
             # Smali constants have no identifier, so require the surrounding line
             # to name a credential.
             if not name_is_secret:

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DroidScope test fixture: DELIBERATELY INSECURE.
+
+  Every weakness below exists so that a specific DroidScope rule can be proven
+  to fire. This application is never installed on a device by the test suite; it
+  is only analysed statically. Do not use any part of it as a reference.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.droidscope.vulnerable"
+    android:versionCode="42"
+    android:versionName="1.4.2">
+
+    <uses-sdk android:minSdkVersion="21" android:targetSdkVersion="28" />
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_SMS" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+    <!-- DS-MANIFEST-007: custom permission with a normal protection level -->
+    <permission
+        android:name="com.droidscope.vulnerable.permission.WEAK"
+        android:protectionLevel="normal" />
+
+    <!-- DS-MANIFEST-003 debuggable, DS-MANIFEST-004 backup,
+         DS-MANIFEST-005 cleartext, DS-MANIFEST-006 user CA trust -->
+    <application
+        android:allowBackup="true"
+        android:debuggable="true"
+        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:label="DroidScope Vulnerable Fixture">
+
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- DS-MANIFEST-001: exported with no access control -->
+        <activity android:name=".WebViewActivity" android:exported="true" />
+
+        <!-- DS-MANIFEST-009: browsable deep links without autoVerify -->
+        <activity android:name=".DeepLinkActivity" android:exported="true"
+            android:launchMode="singleTask" android:taskAffinity="com.attacker.affinity">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="vulnerable.example.com" />
+                <data android:scheme="droidscope-vuln" />
+            </intent-filter>
+        </activity>
+
+        <!-- DS-MANIFEST-002: exported provider with no read/write permission -->
+        <provider
+            android:name=".NotesProvider"
+            android:authorities="com.droidscope.vulnerable.notes"
+            android:exported="true"
+            android:grantUriPermissions="true" />
+
+        <!-- DS-MANIFEST-001: exported receiver guarded only by a weak permission -->
+        <receiver android:name=".CommandReceiver" android:exported="true"
+            android:permission="com.droidscope.vulnerable.permission.WEAK">
+            <intent-filter>
+                <action android:name="com.droidscope.vulnerable.RUN" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Exported service with no protection at all -->
+        <service android:name=".SyncService" android:exported="true" />
+
+        <meta-data android:name="com.google.android.geo.API_KEY"
+            android:value="@@REDACTED_GOOGLE@@" />
+    </application>
+</manifest>

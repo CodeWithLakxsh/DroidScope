@@ -154,16 +154,12 @@ def resolve_config_resource(apk, reference: str | None) -> tuple[str | None, str
         return None, None
 
     candidates: list[str] = []
-    if reference.startswith("@"):
+    resolved = _resolve_reference_name(apk, reference)
+    if resolved:
         # e.g. @xml/network_security_config -> res/xml/network_security_config.xml
-        name = reference.split("/")[-1]
-        candidates.extend(
-            [
-                f"res/xml/{name}.xml",
-                f"res/{name}.xml",
-            ]
-        )
-    else:
+        kind, name = resolved
+        candidates.extend([f"res/{kind}/{name}.xml", f"res/{name}.xml"])
+    elif not reference.startswith("@"):
         candidates.append(reference)
 
     try:
@@ -209,3 +205,45 @@ def _decode_resource_xml(raw: bytes) -> str | None:
         return raw.decode("utf-8")
     except UnicodeDecodeError:
         return None
+
+
+def _resolve_reference_name(apk, reference: str) -> tuple[str, str] | None:  # noqa: ANN001
+    """Resolve a manifest resource reference to a (type, name) pair.
+
+    aapt2 compiles ``android:networkSecurityConfig="@xml/foo"`` down to a
+    numeric resource id such as ``@7F020000``, so the literal name is only
+    recoverable through the resource table.
+    """
+    if not reference.startswith("@"):
+        return None
+    body = reference[1:]
+
+    # Textual form: @xml/network_security_config (possibly package qualified).
+    if "/" in body:
+        kind, _, name = body.rpartition("/")
+        kind = kind.split(":")[-1] or "xml"
+        return kind, name
+
+    # Numeric form: a hexadecimal or decimal resource id.
+    try:
+        resource_id = int(body, 16) if not body.isdigit() else int(body)
+    except ValueError:
+        return None
+
+    try:
+        resources = apk.get_android_resources()
+        if resources is None:
+            return None
+        entry = resources.get_id(apk.get_package(), resource_id)
+        if entry and entry[0] and entry[1]:
+            return str(entry[0]), str(entry[1])
+        xml_name = resources.get_resource_xml_name(resource_id)
+        if xml_name:
+            # Form: @package:type/name
+            _, _, tail = xml_name.partition(":")
+            kind, _, name = tail.partition("/")
+            if kind and name:
+                return kind, name
+    except Exception as exc:  # noqa: BLE001 - resource table may be absent
+        logger.debug("nsc.resource_id_unresolved", reference=reference, error=str(exc))
+    return None

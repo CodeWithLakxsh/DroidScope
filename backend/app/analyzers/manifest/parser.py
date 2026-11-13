@@ -248,7 +248,7 @@ class ParsedManifest:
     def _declared_protection(self, name: str) -> str | None:
         for element in self.root.iter("permission"):
             if _attr(element, "name") == name:
-                return _attr(element, "protectionLevel")
+                return decode_protection_level(_attr(element, "protectionLevel"))
         return None
 
     def declared_permissions(self) -> list[PermissionDeclaration]:
@@ -260,7 +260,9 @@ class ParsedManifest:
             results.append(
                 PermissionDeclaration(
                     name=name,
-                    protection_level=_attr(element, "protectionLevel"),
+                    protection_level=decode_protection_level(
+                        _attr(element, "protectionLevel")
+                    ),
                     permission_group=_attr(element, "permissionGroup"),
                 )
             )
@@ -407,3 +409,51 @@ class ParsedManifest:
                     actions = [_attr(a, "name") or "" for a in child.iter("action")]
                     results.append({"type": "intent", "value": ",".join(filter(None, actions))})
         return results
+
+
+# android:protectionLevel is an enum+flags attribute.  aapt2 compiles it to an
+# integer, so a manifest decoded from a built APK carries "0x00000002" where the
+# source carried "signature".  Decoding it is what lets the component rules tell
+# a signature-protected component from an unprotected one.
+_PROTECTION_BASE = {
+    0: "normal",
+    1: "dangerous",
+    2: "signature",
+    3: "signatureOrSystem",
+}
+_PROTECTION_FLAGS = (
+    (0x10, "privileged"),
+    (0x20, "development"),
+    (0x40, "appop"),
+    (0x80, "pre23"),
+    (0x100, "installer"),
+    (0x200, "verifier"),
+    (0x400, "preinstalled"),
+    (0x800, "setup"),
+    (0x1000, "instant"),
+    (0x2000, "runtime"),
+    (0x4000, "oem"),
+    (0x10000, "vendorPrivileged"),
+    (0x20000, "systemTextClassifier"),
+    (0x80000, "configurator"),
+    (0x400000, "role"),
+    (0x1000000, "knownSigner"),
+)
+
+
+def decode_protection_level(value: str | None) -> str | None:
+    """Return a textual protectionLevel for a textual or numeric attribute."""
+    if value is None:
+        return None
+    text = value.strip()
+    if not text:
+        return None
+    try:
+        numeric = int(text, 16) if text.lower().startswith("0x") else int(text)
+    except ValueError:
+        return text  # already textual, e.g. "signature|privileged"
+
+    base = _PROTECTION_BASE.get(numeric & 0xF, f"unknown({numeric & 0xF})")
+    parts = [base]
+    parts.extend(label for mask, label in _PROTECTION_FLAGS if numeric & mask)
+    return "|".join(parts)
