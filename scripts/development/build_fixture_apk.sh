@@ -69,6 +69,7 @@ substitute_placeholders() {
     api_secret="$(rand_str 40 'A-Za-z0-9')"
     local slack_token="xoxb-$(rand_str 10 '0-9')-$(rand_str 10 '0-9')-$(rand_str 24 'A-Za-z0-9')"
     local google_key="AIza$(rand_str 35 'A-Za-z0-9_-')"
+    local google_key_2="AIza$(rand_str 35 'A-Za-z0-9_-')"
 
     local file
     while IFS= read -r file; do
@@ -77,8 +78,9 @@ substitute_placeholders() {
             -e "s|@@API_SECRET_KEY@@|${api_secret}|g" \
             -e "s|@@SLACK_TOKEN@@|${slack_token}|g" \
             -e "s|@@GOOGLE_API_KEY@@|${google_key}|g" \
+            -e "s|@@GOOGLE_API_KEY_2@@|${google_key_2}|g" \
             "${file}" > "${file}.tmp" && mv "${file}.tmp" "${file}"
-    done < <(find "${tree}" -name '*.java')
+    done < <(find "${tree}" \( -name '*.java' -o -name '*.xml' \))
 }
 
 ensure_keystore() {
@@ -113,11 +115,19 @@ build_app() {
     work="$(mktemp -d)"
     trap 'rm -rf "${work}"' RETURN
 
-    mkdir -p "${work}/compiled" "${work}/classes" "${work}/dex"
+    mkdir -p "${work}/compiled" "${work}/classes" "${work}/dex" "${work}/app"
+
+    # Stage the manifest and resources so placeholder substitution applies to
+    # them as well as to the Java sources.
+    cp "${src_dir}/AndroidManifest.xml" "${work}/app/AndroidManifest.xml"
+    if [[ -d "${src_dir}/res" ]]; then
+        cp -R "${src_dir}/res" "${work}/app/res"
+    fi
+    substitute_placeholders "${work}/app"
 
     # 1. compile resources
-    if [[ -d "${src_dir}/res" ]]; then
-        "${AAPT2}" compile --dir "${src_dir}/res" -o "${work}/compiled/resources.zip"
+    if [[ -d "${work}/app/res" ]]; then
+        "${AAPT2}" compile --dir "${work}/app/res" -o "${work}/compiled/resources.zip"
         RES_ARG=("${work}/compiled/resources.zip")
     else
         RES_ARG=()
@@ -127,7 +137,7 @@ build_app() {
     "${AAPT2}" link \
         -o "${work}/base.apk" \
         -I "${PLATFORM_JAR}" \
-        --manifest "${src_dir}/AndroidManifest.xml" \
+        --manifest "${work}/app/AndroidManifest.xml" \
         --java "${work}/gen" \
         --auto-add-overlay \
         "${RES_ARG[@]+"${RES_ARG[@]}"}"
