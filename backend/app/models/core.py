@@ -41,7 +41,7 @@ from app.core.enums import (
     Severity,
     SessionStatus,
 )
-from app.database.base import Base, IdMixin, TimestampMixin, utcnow
+from app.database.base import Base, IdMixin, StrEnumType, TimestampMixin, utcnow
 
 
 class Application(Base, IdMixin, TimestampMixin):
@@ -103,8 +103,12 @@ class Scan(Base, IdMixin, TimestampMixin):
     apk_id: Mapped[str] = mapped_column(
         ForeignKey("apk_artifacts.id", ondelete="CASCADE"), index=True
     )
-    profile: Mapped[ScanProfile] = mapped_column(String(16), default=ScanProfile.standard)
-    status: Mapped[JobStatus] = mapped_column(String(16), default=JobStatus.queued, index=True)
+    profile: Mapped[ScanProfile] = mapped_column(
+        StrEnumType(ScanProfile, 16), default=ScanProfile.standard
+    )
+    status: Mapped[JobStatus] = mapped_column(
+        StrEnumType(JobStatus, 16), default=JobStatus.queued, index=True
+    )
     progress: Mapped[float] = mapped_column(Float, default=0.0)
     stage: Mapped[str | None] = mapped_column(String(128))
 
@@ -147,7 +151,7 @@ class AnalyzerExecution(Base, IdMixin):
     scan_id: Mapped[str] = mapped_column(ForeignKey("scans.id", ondelete="CASCADE"), index=True)
     analyzer: Mapped[str] = mapped_column(String(64))
     analyzer_version: Mapped[str] = mapped_column(String(32), default="1")
-    status: Mapped[AnalyzerStatus] = mapped_column(String(16))
+    status: Mapped[AnalyzerStatus] = mapped_column(StrEnumType(AnalyzerStatus, 16))
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     duration_seconds: Mapped[float | None] = mapped_column(Float)
@@ -174,8 +178,8 @@ class Finding(Base, IdMixin, TimestampMixin):
     rule_version: Mapped[str] = mapped_column(String(16), default="1")
     title: Mapped[str] = mapped_column(String(300))
     description: Mapped[str] = mapped_column(Text)
-    severity: Mapped[Severity] = mapped_column(String(16), index=True)
-    confidence: Mapped[Confidence] = mapped_column(String(16), index=True)
+    severity: Mapped[Severity] = mapped_column(StrEnumType(Severity, 16), index=True)
+    confidence: Mapped[Confidence] = mapped_column(StrEnumType(Confidence, 16), index=True)
     category: Mapped[str] = mapped_column(String(64), index=True)
 
     cwe_ids: Mapped[list[Any]] = mapped_column(JSON, default=list)
@@ -193,7 +197,7 @@ class Finding(Base, IdMixin, TimestampMixin):
 
     analysis_engine: Mapped[str] = mapped_column(String(64), index=True)
     status: Mapped[FindingStatus] = mapped_column(
-        String(24), default=FindingStatus.open, index=True
+        StrEnumType(FindingStatus, 24), default=FindingStatus.open, index=True
     )
     fingerprint: Mapped[str] = mapped_column(String(64))
     risk_contribution: Mapped[float] = mapped_column(Float, default=0.0)
@@ -237,8 +241,8 @@ class FindingReview(Base, IdMixin):
     finding_id: Mapped[str] = mapped_column(
         ForeignKey("findings.id", ondelete="CASCADE"), index=True
     )
-    previous_status: Mapped[FindingStatus] = mapped_column(String(24))
-    new_status: Mapped[FindingStatus] = mapped_column(String(24))
+    previous_status: Mapped[FindingStatus] = mapped_column(StrEnumType(FindingStatus, 24))
+    new_status: Mapped[FindingStatus] = mapped_column(StrEnumType(FindingStatus, 24))
     note: Mapped[str | None] = mapped_column(Text)
     reviewer: Mapped[str | None] = mapped_column(String(128))
     created_at: Mapped[datetime] = mapped_column(
@@ -300,7 +304,9 @@ class DynamicSession(Base, IdMixin, TimestampMixin):
     )
     device_serial: Mapped[str] = mapped_column(String(128))
     device_info: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
-    status: Mapped[SessionStatus] = mapped_column(String(16), default=SessionStatus.created)
+    status: Mapped[SessionStatus] = mapped_column(
+        StrEnumType(SessionStatus, 16), default=SessionStatus.created
+    )
     modules: Mapped[list[Any]] = mapped_column(JSON, default=list)
     config: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -339,8 +345,10 @@ class Report(Base, IdMixin):
     __tablename__ = "reports"
 
     scan_id: Mapped[str] = mapped_column(ForeignKey("scans.id", ondelete="CASCADE"), index=True)
-    report_format: Mapped[ReportFormat] = mapped_column(String(8))
-    status: Mapped[JobStatus] = mapped_column(String(16), default=JobStatus.queued)
+    report_format: Mapped[ReportFormat] = mapped_column(StrEnumType(ReportFormat, 8))
+    status: Mapped[JobStatus] = mapped_column(
+        StrEnumType(JobStatus, 16), default=JobStatus.queued
+    )
     storage_key: Mapped[str | None] = mapped_column(String(512))
     filename: Mapped[str | None] = mapped_column(String(255))
     size_bytes: Mapped[int | None] = mapped_column(BigInteger)

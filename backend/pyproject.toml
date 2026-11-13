@@ -43,7 +43,7 @@ dev = [
 ]
 
 [project.scripts]
-droidscope = "app.cli.main:app"
+droidscope = "app.cli.main:run"
 
 [build-system]
 requires = ["hatchling"]

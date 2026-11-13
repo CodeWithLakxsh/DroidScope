@@ -243,6 +243,10 @@ class IndicatorExtractor:
             raw = match.group(0).decode("ascii", errors="replace").lower().rstrip(".")
             if raw in seen_values or is_noise_host(raw):
                 continue
+            # A MIME type such as "vnd.android.cursor.dir/vnd.com.example.notes"
+            # contains a substring that looks like a hostname but is not one.
+            if self._is_mime_context(data, match.start(), match.end()):
+                continue
             # Skip a domain already captured as part of a URL.
             if any(raw in value for value in seen_values):
                 continue
@@ -302,6 +306,17 @@ class IndicatorExtractor:
             context=self._context(data, offset, offset + len(raw)),
             detail={"path": parts.path[:256]} if parts.path not in {"", "/"} else {},
         )
+
+    @staticmethod
+    def _is_mime_context(data: bytes, start: int, end: int) -> bool:
+        """Is the match part of a MIME type rather than a hostname?
+
+        Only the bytes immediately before the match are considered: a wider
+        window would reject a genuine hostname that merely happens to sit near
+        a MIME type in the same string pool.
+        """
+        prefix = data[max(start - 14, 0) : start].lower()
+        return prefix.endswith((b"vnd.", b"/vnd.", b"cursor.dir/", b"cursor.item/"))
 
     @staticmethod
     def _looks_like_version(data: bytes, start: int, end: int) -> bool:
