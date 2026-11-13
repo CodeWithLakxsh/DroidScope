@@ -1,0 +1,395 @@
+# DroidScope cryptography detection rules.
+#
+# Each rule requires corroborating context before reporting, because a weak
+# primitive is only a vulnerability when it protects something.  MD5 used to
+# build a cache key is not a finding; MD5 used to hash a password is.
+rules:
+  - id: DS-CRYPTO-001
+    name: Password or token hashed with MD5
+    version: "1"
+    category: cryptography
+    severity: high
+    confidence: medium
+    engine: source-analyzer
+    scope: code
+    description: >-
+      MD5 is used in a code path that also handles a password, PIN, token or
+      other credential. MD5 is a fast, collision-prone hash with no work factor,
+      so hashing a credential with it offers almost no protection once the
+      digest is recovered.
+    impact: >-
+      An attacker who obtains the stored or transmitted digest can recover the
+      original credential with commodity hardware, because MD5 can be computed
+      billions of times per second and extensive rainbow tables exist. If the
+      digest is used as an authentication token, collisions may also allow
+      forgery.
+    remediation: >-
+      Do not hash credentials with a general purpose hash. Derive keys with a
+      memory-hard KDF such as Argon2id, scrypt, or PBKDF2 with a high iteration
+      count and a per-user random salt. On Android, store the resulting key
+      material in the Android Keystore rather than in application storage.
+    cwe: ["CWE-327", "CWE-328", "CWE-916"]
+    masvs: ["MASVS-CRYPTO-1"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-CRYPTO/MASTG-TEST-0014/
+      - https://cwe.mitre.org/data/definitions/328.html
+    verification: >-
+      Inspect the surrounding method to confirm the digest is used for
+      authentication or key derivation rather than for an integrity checksum.
+    limitations: >-
+      Confidence is medium because the credential keyword and the MD5 call may
+      be in unrelated parts of the same file. A reviewer should confirm the data
+      flow.
+    patterns:
+      - 'MessageDigest\.getInstance\s*\(\s*"(?i:md5)"'
+      - 'DigestUtils\.md5(?:Hex)?\s*\('
+      - '"(?i:md5)"\s*\)\s*;?\s*//'
+    require_any:
+      - '(?i)(password|passwd|pwd|credential|secret|token|pin|auth)'
+    exclude:
+      - '(?i)(checksum|etag|cache[_ ]?key|file[_ ]?hash|integrity|fingerprint|dedup|identifier)'
+    exclude_file:
+      - '(?i)class\s+\w*(Checksum|CacheKey|FileHash)\w*'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+    confidence_rules:
+      - when_any:
+          - '(?i)(password|passwd|pwd)\s*\.?\s*(getBytes|toCharArray)'
+          - '(?i)hashPassword|passwordHash|encryptPassword'
+        set: high
+        scope: file
+        reason: the MD5 call is applied directly to a password value
+
+  - id: DS-CRYPTO-002
+    name: Weak hash algorithm MD5 or SHA-1 in use
+    version: "1"
+    category: cryptography
+    severity: low
+    confidence: medium
+    engine: source-analyzer
+    scope: code
+    description: >-
+      The application calls a broken or deprecated hash algorithm. This is
+      reported at low severity on its own, because the algorithm may be used for
+      a non-security purpose such as a cache key or an interoperability
+      requirement with an existing protocol.
+    impact: >-
+      MD5 and SHA-1 both have practical collision attacks. Where the hash is
+      relied on for integrity or identity, an attacker may be able to produce a
+      second input with the same digest. Where it is only a cache key or
+      checksum, there is no security impact.
+    remediation: >-
+      Use SHA-256 or SHA-3 for integrity and identity. If the algorithm is
+      required for compatibility with an external system, document that decision
+      and confirm the hash is not relied upon for a security property.
+    cwe: ["CWE-327", "CWE-328"]
+    masvs: ["MASVS-CRYPTO-1"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-CRYPTO/MASTG-TEST-0014/
+    limitations: >-
+      This rule records algorithm usage. It does not determine the purpose of the
+      hash, which is what decides whether the usage is acceptable.
+    patterns:
+      - 'MessageDigest\.getInstance\s*\(\s*"(?i:md5|sha-?1|md2|md4)"'
+      - 'Signature\.getInstance\s*\(\s*"(?i:md5withrsa|sha1withrsa|md2withrsa)"'
+      - 'Mac\.getInstance\s*\(\s*"(?i:hmacmd5)"'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+
+  - id: DS-CRYPTO-003
+    name: Obsolete symmetric cipher (DES, 3DES, RC4 or Blowfish)
+    version: "1"
+    category: cryptography
+    severity: high
+    confidence: high
+    engine: source-analyzer
+    scope: code
+    description: >-
+      The application constructs a cipher using DES, Triple DES, RC4 or
+      Blowfish. These algorithms have inadequate key or block sizes and are no
+      longer considered safe for confidentiality.
+    impact: >-
+      Single DES has a 56-bit effective key and is brute forceable. Triple DES
+      and Blowfish use a 64-bit block, which makes them vulnerable to birthday
+      collision attacks after relatively little data. RC4 has practical
+      plaintext recovery attacks. Data encrypted with any of these can be
+      recovered by a capable attacker.
+    remediation: >-
+      Use AES-256 in an authenticated mode such as GCM, and obtain the key from
+      the Android Keystore. For a complete, reviewed implementation prefer a
+      higher level library such as Tink or Jetpack Security rather than calling
+      the JCA directly.
+    cwe: ["CWE-327", "CWE-326"]
+    masvs: ["MASVS-CRYPTO-1"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-CRYPTO/MASTG-TEST-0014/
+      - https://developer.android.com/privacy-and-security/cryptography
+    patterns:
+      - 'Cipher\.getInstance\s*\(\s*"(?i:des|desede|tripledes|rc4|arcfour|blowfish|rc2)(?:/[^"]*)?"'
+      - 'SecretKeyFactory\.getInstance\s*\(\s*"(?i:des|desede)"'
+      - 'KeyGenerator\.getInstance\s*\(\s*"(?i:des|desede|rc4|blowfish)"'
+      - 'new\s+(?:DES|DESede|Blowfish)KeySpec\s*\('
+    exclude_paths:
+      - /test/
+      - /androidTest/
+
+  - id: DS-CRYPTO-004
+    name: Block cipher used in ECB mode
+    version: "1"
+    category: cryptography
+    severity: high
+    confidence: high
+    engine: source-analyzer
+    scope: code
+    description: >-
+      A block cipher is instantiated in ECB mode, explicitly or by relying on
+      the JCA default. ECB encrypts every identical plaintext block to the same
+      ciphertext block, so it does not hide data patterns and provides no
+      integrity protection.
+    impact: >-
+      Structure in the plaintext remains visible in the ciphertext, which can
+      reveal the content of structured data outright. Because ECB is
+      unauthenticated, an attacker can also reorder, duplicate or splice
+      ciphertext blocks and the application will decrypt the result without
+      detecting the modification.
+    remediation: >-
+      Use an authenticated mode: AES/GCM/NoPadding with a unique 12-byte nonce
+      per encryption, or AES/CBC/PKCS7Padding combined with a separate HMAC over
+      the ciphertext. Never reuse a nonce with GCM. Always specify mode and
+      padding explicitly rather than relying on the provider default.
+    cwe: ["CWE-327"]
+    masvs: ["MASVS-CRYPTO-1"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-CRYPTO/MASTG-TEST-0014/
+      - https://developer.android.com/privacy-and-security/cryptography#choose-algorithm
+    verification: >-
+      Encrypt a plaintext consisting of repeated blocks and confirm the
+      ciphertext repeats correspondingly.
+    patterns:
+      - 'Cipher\.getInstance\s*\(\s*"(?i:aes|des|desede|blowfish)/ECB/'
+      - 'Cipher\.getInstance\s*\(\s*"(?i:aes)"\s*\)'
+      - 'Cipher\.getInstance\s*\(\s*"(?i:aes/ecb)'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+    confidence_rules:
+      - when_any:
+          - 'Cipher\.getInstance\s*\(\s*"(?i:aes)"\s*\)'
+        set: medium
+        scope: line
+        reason: >-
+          mode and padding are omitted, so the provider default applies; on the
+          Android JCA this resolves to ECB with PKCS5 padding
+
+  - id: DS-CRYPTO-005
+    name: Static initialisation vector used for encryption
+    version: "1"
+    category: cryptography
+    severity: high
+    confidence: medium
+    engine: source-analyzer
+    scope: code
+    description: >-
+      An IvParameterSpec is constructed from a hardcoded byte array or a string
+      literal. A fixed IV defeats the purpose of the IV, which is to make the
+      same plaintext encrypt differently each time.
+    impact: >-
+      With a fixed IV in CBC mode, identical plaintexts produce identical
+      ciphertexts, which leaks equality of encrypted values and can reveal data
+      through a chosen plaintext attack. With a fixed nonce in GCM or CTR mode,
+      the keystream repeats, and an attacker who sees two messages can recover
+      the XOR of their plaintexts and forge authentication tags.
+    remediation: >-
+      Generate a fresh IV with SecureRandom for every encryption operation and
+      transmit or store it alongside the ciphertext. It does not need to be
+      secret, only unique and unpredictable.
+    cwe: ["CWE-329", "CWE-1204"]
+    masvs: ["MASVS-CRYPTO-1"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-CRYPTO/MASTG-TEST-0014/
+      - https://cwe.mitre.org/data/definitions/329.html
+    patterns:
+      - 'new\s+IvParameterSpec\s*\(\s*"[^"]{4,}"'
+      - 'new\s+IvParameterSpec\s*\(\s*new\s+byte\s*\[\]\s*\{'
+      - 'new\s+IvParameterSpec\s*\(\s*(?:[A-Za-z_]\w*)\.getBytes\s*\('
+      - 'new\s+GCMParameterSpec\s*\(\s*\d+\s*,\s*"[^"]{4,}"'
+    require_any:
+      - 'Cipher\.getInstance'
+    exclude:
+      - '(?i)(random|securerandom|nextBytes|generateIv)'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+    confidence_rules:
+      - when_any:
+          - 'new\s+IvParameterSpec\s*\(\s*new\s+byte\s*\[\]\s*\{\s*(?:0\s*,\s*){7,}'
+          - 'new\s+IvParameterSpec\s*\(\s*"(?i:0{8,}|1234|abcdef)'
+        set: high
+        scope: file
+        reason: the initialisation vector is a constant, trivially predictable value
+
+  - id: DS-CRYPTO-006
+    name: Insecure random number generator used for security value
+    version: "1"
+    category: cryptography
+    severity: medium
+    confidence: medium
+    engine: source-analyzer
+    scope: code
+    description: >-
+      java.util.Random, Math.random or a seeded SecureRandom is used in a code
+      path that produces a token, key, nonce, salt, session identifier or
+      one-time password. These generators are statistically uniform but entirely
+      predictable from observed output.
+    impact: >-
+      java.util.Random is a 48-bit linear congruential generator. An attacker
+      who observes a small number of outputs can recover its internal state and
+      predict every subsequent value, which allows forging session tokens,
+      predicting password reset codes, or reconstructing generated keys.
+    remediation: >-
+      Use java.security.SecureRandom with no explicit seed; the platform seeds
+      it from the system entropy source. Never call setSeed with a constant or a
+      timestamp. For key material, prefer KeyGenerator or the Android Keystore.
+    cwe: ["CWE-330", "CWE-338"]
+    masvs: ["MASVS-CRYPTO-1"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-CRYPTO/MASTG-TEST-0015/
+      - https://developer.android.com/privacy-and-security/risks/weak-prng
+    verification: >-
+      Collect successive generated values and confirm whether the sequence can
+      be reproduced from a recovered seed.
+    patterns:
+      - 'new\s+Random\s*\('
+      - 'Math\.random\s*\('
+      - 'ThreadLocalRandom\.current\s*\(\s*\)'
+      - 'new\s+SecureRandom\s*\(\s*[^)\s]'
+      - 'SecureRandom\s*\([^)]*\)\s*\.\s*setSeed\s*\('
+      - 'Random\s*\(\s*System\.currentTimeMillis\s*\(\s*\)\s*\)'
+    require_any:
+      - '(?i)(token|secret|key|nonce|salt|session|otp|password|iv\b|authcode|csrf)'
+    exclude:
+      - '(?i)(animation|shuffle|jitter|backoff|retry|sample|dither|placeholder|colou?r|position|index)'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+    confidence_rules:
+      - when_any:
+          - '(?i)(generateToken|generateKey|createSession|generateOtp|generateSalt|resetCode)'
+        set: high
+        scope: file
+        reason: the generator feeds a function whose name indicates security material
+
+  - id: DS-CRYPTO-007
+    name: Password-based key derivation with a low iteration count
+    version: "1"
+    category: cryptography
+    severity: medium
+    confidence: high
+    engine: source-analyzer
+    scope: code
+    description: >-
+      A PBEKeySpec is constructed with an iteration count below 10000.
+      The iteration count is the only work factor PBKDF2 has, so a low value
+      makes offline guessing of the source password cheap.
+    impact: >-
+      With a low iteration count an attacker can test millions of candidate
+      passwords per second against the derived key, so a user-chosen password
+      offers little protection for the encrypted data.
+    remediation: >-
+      Use at least 600000 iterations for PBKDF2-HMAC-SHA256 as recommended by
+      current OWASP guidance, or move to a memory-hard function such as Argon2id
+      or scrypt. Where the platform allows, prefer hardware-backed keys from the
+      Android Keystore so no password-derived key is needed.
+    cwe: ["CWE-916"]
+    masvs: ["MASVS-CRYPTO-1"]
+    references:
+      - https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-CRYPTO/MASTG-TEST-0014/
+    patterns:
+      - 'new\s+PBEKeySpec\s*\([^,]+,[^,]+,\s*(?:[1-9]\d{0,3})\s*[,)]'
+      - 'setIterationCount\s*\(\s*(?:[1-9]\d{0,3})\s*\)'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+
+  - id: DS-CRYPTO-008
+    name: RSA encryption without OAEP padding
+    version: "1"
+    category: cryptography
+    severity: medium
+    confidence: high
+    engine: source-analyzer
+    scope: code
+    description: >-
+      RSA is instantiated with no padding or with PKCS#1 v1.5 padding. Raw RSA
+      is deterministic and malleable, and PKCS#1 v1.5 decryption is vulnerable
+      to adaptive chosen-ciphertext (Bleichenbacher) attacks.
+    impact: >-
+      With NoPadding, identical plaintexts produce identical ciphertexts and the
+      ciphertext can be manipulated algebraically. With PKCS#1 v1.5, a server
+      that reveals padding validity can be used as an oracle to decrypt
+      ciphertext without the private key.
+    remediation: >-
+      Use RSA/ECB/OAEPWithSHA-256AndMGF1Padding, or avoid RSA for bulk
+      encryption entirely: encrypt data with AES-GCM and wrap only the AES key
+      with RSA-OAEP.
+    cwe: ["CWE-780", "CWE-327"]
+    masvs: ["MASVS-CRYPTO-1"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-CRYPTO/MASTG-TEST-0014/
+    patterns:
+      - 'Cipher\.getInstance\s*\(\s*"(?i:rsa)(?:/[^"/]*)?/NoPadding"'
+      - 'Cipher\.getInstance\s*\(\s*"(?i:rsa)"\s*\)'
+      - 'Cipher\.getInstance\s*\(\s*"(?i:rsa/ecb/pkcs1padding)"'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+
+  - id: DS-CRYPTO-009
+    name: Hardcoded symmetric key material
+    version: "1"
+    category: cryptography
+    severity: critical
+    confidence: medium
+    engine: source-analyzer
+    scope: code
+    description: >-
+      A SecretKeySpec is built from a string literal or a constant byte array.
+      A key compiled into the application is available to anyone who can read
+      the APK, which is everybody who can install it.
+    impact: >-
+      Every installation shares the same key, so extracting it once compromises
+      the encrypted data of every user. Because the key cannot be rotated
+      without shipping a new build, the exposure is permanent for installed
+      versions.
+    remediation: >-
+      Generate keys at runtime and store them in the Android Keystore with
+      setUserAuthenticationRequired where appropriate, so the key material never
+      exists in the application binary or in readable storage. Where a shared
+      secret is unavoidable, move the operation that needs it to a server.
+    cwe: ["CWE-321", "CWE-798"]
+    masvs: ["MASVS-CRYPTO-1", "MASVS-CRYPTO-2"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-CRYPTO/MASTG-TEST-0013/
+      - https://developer.android.com/privacy-and-security/keystore
+    verification: >-
+      Extract the literal from the decompiled source and confirm it decrypts
+      data produced by the application.
+    limitations: >-
+      A literal passed to SecretKeySpec may be a test vector rather than a
+      production key. Confirm the call site before treating the key as live.
+    patterns:
+      - 'new\s+SecretKeySpec\s*\(\s*"[^"]{8,}"\s*\.\s*getBytes'
+      - 'new\s+SecretKeySpec\s*\(\s*new\s+byte\s*\[\]\s*\{'
+      - 'new\s+SecretKeySpec\s*\(\s*(?:[A-Za-z_]\w*\.)?(?:KEY|SECRET|AES_KEY|ENCRYPTION_KEY)\s*\.\s*getBytes'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+    confidence_rules:
+      - when_any:
+          - '(?i)static\s+final\s+String\s+\w*(KEY|SECRET)\w*\s*=\s*"[^"]{16,}"'
+        set: high
+        scope: file
+        reason: a constant of at least 16 characters named as a key is defined in the same file

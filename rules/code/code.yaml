@@ -1,0 +1,320 @@
+# Platform interaction and code-execution rules.
+rules:
+  - id: DS-CODE-001
+    name: Dynamic code loading from a writable location
+    version: "1"
+    category: native-code
+    severity: high
+    confidence: medium
+    engine: source-analyzer
+    scope: code
+    description: >-
+      The application loads executable code at runtime through DexClassLoader,
+      PathClassLoader or InMemoryDexClassLoader. Where the loaded file comes
+      from external storage, a download or a cache directory, the integrity of
+      the executed code depends entirely on the integrity of that location.
+    impact: >-
+      If an attacker can replace the loaded DEX or JAR, their code executes with
+      the application's identity and permissions. Loading from external storage
+      is the clearest case, because other applications and the user can write
+      there. Dynamically loaded code also bypasses the review and signing
+      guarantees that apply to the APK itself.
+    remediation: >-
+      Ship all executable code inside the APK. Where dynamic loading is
+      unavoidable, place the file in internal storage only, verify a signature
+      over it against a pinned public key before loading, and never load from a
+      path influenced by external input.
+    cwe: ["CWE-494", "CWE-829"]
+    masvs: ["MASVS-CODE-2", "MASVS-RESILIENCE-3"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-CODE/MASTG-TEST-0027/
+      - https://developer.android.com/privacy-and-security/risks/dynamic-code-loading
+    verification: >-
+      Identify the loaded path at runtime and confirm whether a process other
+      than the application can write to it.
+    patterns:
+      - 'new\s+DexClassLoader\s*\('
+      - 'new\s+PathClassLoader\s*\('
+      - 'new\s+InMemoryDexClassLoader\s*\('
+      - 'DexFile\.loadDex\s*\('
+      - '\.loadClass\s*\(\s*(?!")[A-Za-z_]\w*\s*\)'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+    confidence_rules:
+      - when_any:
+          - 'getExternalStorageDirectory|getExternalFilesDir|getExternalCacheDir'
+          - '(?i)(download|\.apk"|\.dex"|\.jar")'
+        set: high
+        scope: file
+        reason: the loaded artifact path refers to external storage or a downloaded file
+
+  - id: DS-CODE-002
+    name: Shell command execution
+    version: "1"
+    category: native-code
+    severity: medium
+    confidence: medium
+    engine: source-analyzer
+    scope: code
+    description: >-
+      The application executes a shell command through Runtime.exec or
+      ProcessBuilder.
+    impact: >-
+      If any part of the command string is built from data the application does
+      not control, an attacker can append or alter arguments and have them run
+      as the application. Even with a fixed command, invoking the shell enlarges
+      the attack surface and is frequently used to probe for root.
+    remediation: >-
+      Replace shell invocations with platform APIs. Where a subprocess is truly
+      required, pass an argument array rather than a single string, never
+      interpolate external input, and avoid invoking sh or su.
+    cwe: ["CWE-78"]
+    masvs: ["MASVS-CODE-4"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-CODE/MASTG-TEST-0025/
+    limitations: >-
+      Command execution is not inherently a vulnerability. Severity depends on
+      whether external input reaches the command, which requires reviewing the
+      call site.
+    patterns:
+      - 'Runtime\.getRuntime\s*\(\s*\)\s*\.\s*exec\s*\('
+      - 'new\s+ProcessBuilder\s*\('
+    exclude_paths:
+      - /test/
+      - /androidTest/
+    confidence_rules:
+      - when_any:
+          - 'exec\s*\(\s*"[^"]*"\s*\+'
+          - 'exec\s*\(\s*(?!")[A-Za-z_]\w*\s*\)'
+        set: high
+        scope: line
+        reason: the command string is concatenated or supplied by a variable
+
+  - id: DS-CODE-003
+    name: Java deserialisation of untrusted data
+    version: "1"
+    category: native-code
+    severity: medium
+    confidence: low
+    engine: source-analyzer
+    scope: code
+    description: >-
+      The application reads serialised Java objects with ObjectInputStream.
+      Deserialising data from an untrusted source instantiates arbitrary classes
+      present on the classpath.
+    impact: >-
+      With a suitable gadget chain in the application's dependencies, an
+      attacker who controls the serialised bytes may achieve code execution or
+      corrupt application state. Even without a gadget chain, type confusion and
+      resource exhaustion are possible.
+    remediation: >-
+      Do not deserialise data that crosses a trust boundary. Use an explicit,
+      schema-validated format such as JSON or protocol buffers. If Java
+      serialisation must be kept, apply an ObjectInputFilter allowlist of
+      expected classes.
+    cwe: ["CWE-502"]
+    masvs: ["MASVS-CODE-4"]
+    references:
+      - https://cwe.mitre.org/data/definitions/502.html
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-CODE/MASTG-TEST-0025/
+    limitations: >-
+      Low confidence: the data source is not determined by this rule.
+      Deserialising the application's own files is normal and safe.
+    patterns:
+      - 'new\s+ObjectInputStream\s*\('
+      - '\.readObject\s*\(\s*\)'
+    exclude_file:
+      - 'ObjectInputFilter|setObjectInputFilter'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+
+  - id: DS-CODE-004
+    name: Intent redirection through an unvalidated nested Intent
+    version: "1"
+    category: android-component-security
+    severity: high
+    confidence: medium
+    engine: source-analyzer
+    scope: code
+    description: >-
+      An Intent is extracted from the extras of an incoming Intent and then
+      used to start a component, without validation of its target. This is the
+      Intent redirection pattern.
+    impact: >-
+      An attacker sends a nested Intent to an exported component of this
+      application, which then dispatches it. Because the dispatch happens with
+      this application's identity, the attacker can reach components that are
+      not exported, and can obtain URI read grants on content the attacker
+      should not be able to access.
+    remediation: >-
+      Do not forward an Intent received from another application. If forwarding
+      is required, verify the resolved component belongs to your own package
+      (compare getComponent().getPackageName() against your package), strip
+      FLAG_GRANT_*_URI_PERMISSION flags, and never use the nested Intent to
+      select the target.
+    cwe: ["CWE-940", "CWE-927"]
+    masvs: ["MASVS-PLATFORM-1"]
+    references:
+      - https://developer.android.com/privacy-and-security/risks/intent-redirection
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-PLATFORM/MASTG-TEST-0029/
+    verification: >-
+      Send the exported component an Intent carrying a nested Intent addressed
+      at a non-exported component and observe whether it is started.
+    patterns:
+      - 'getParcelableExtra\s*\([^)]*\)[\s\S]{0,200}?start(?:Activity|Service|ActivityForResult)\s*\('
+      - '\(\s*Intent\s*\)\s*(?:[A-Za-z_]\w*)\.get(?:Parcelable)?Extra\s*\('
+      - 'getParcelableExtra\s*\(\s*"[^"]*(?i:intent|forward|redirect|target)[^"]*"\s*\)'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+
+  - id: DS-CODE-005
+    name: Mutable PendingIntent with an implicit base Intent
+    version: "1"
+    category: android-component-security
+    severity: medium
+    confidence: medium
+    engine: source-analyzer
+    scope: code
+    description: >-
+      A PendingIntent is created with FLAG_MUTABLE, or without FLAG_IMMUTABLE on
+      an application targeting an API level below 34 where immutability is not
+      the default.
+    impact: >-
+      The component that receives a mutable PendingIntent can fill in the unset
+      fields of the wrapped Intent, including its component and data, and the
+      filled Intent is then sent with this application's identity and
+      permissions. This allows a receiving application to make this application
+      act on its behalf.
+    remediation: >-
+      Create PendingIntents with FLAG_IMMUTABLE, and always set an explicit
+      component on the wrapped Intent. Use FLAG_MUTABLE only where a platform
+      feature requires it, such as inline reply, and set the component
+      explicitly even then.
+    cwe: ["CWE-927"]
+    masvs: ["MASVS-PLATFORM-1"]
+    references:
+      - https://developer.android.com/privacy-and-security/risks/pending-intent
+    patterns:
+      - 'PendingIntent\.get(?:Activity|Broadcast|Service)\s*\([\s\S]{0,200}?FLAG_MUTABLE'
+      - 'PendingIntent\.get(?:Activity|Broadcast|Service)\s*\(\s*[^,]+,\s*[^,]+,\s*new\s+Intent\s*\(\s*\)'
+    exclude:
+      - 'FLAG_IMMUTABLE'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+
+  - id: DS-CODE-006
+    name: Archive extraction without path validation
+    version: "1"
+    category: native-code
+    severity: high
+    confidence: medium
+    engine: source-analyzer
+    scope: code
+    description: >-
+      The application extracts a ZIP archive using the entry name to build the
+      output path, with no check that the result stays inside the target
+      directory. This is the Zip Path Traversal pattern, also known as
+      ZipSlip.
+    impact: >-
+      An archive entry named with a traversal sequence causes the application to
+      write outside the intended directory. An attacker who controls the archive
+      can overwrite the application's own files, including shared preferences,
+      databases, and in some configurations native libraries that are
+      subsequently loaded, leading to code execution.
+    remediation: >-
+      Canonicalise the resolved destination for each entry and confirm it starts
+      with the canonical path of the target directory before writing. Reject
+      absolute names and names containing "..", and skip symbolic links.
+    cwe: ["CWE-22"]
+    masvs: ["MASVS-CODE-4"]
+    references:
+      - https://developer.android.com/privacy-and-security/risks/zip-path-traversal
+      - https://cwe.mitre.org/data/definitions/22.html
+    verification: >-
+      Supply an archive containing an entry named ../evil and confirm where the
+      file is written.
+    patterns:
+      - 'ZipEntry[\s\S]{0,200}?getName\s*\(\s*\)[\s\S]{0,200}?new\s+File(?:OutputStream)?\s*\('
+      - 'new\s+File\s*\(\s*[A-Za-z_]\w*\s*,\s*(?:[A-Za-z_]\w*)\.getName\s*\(\s*\)\s*\)'
+    exclude_file:
+      - 'getCanonicalPath|getCanonicalFile|startsWith\s*\(\s*(?:destDir|targetDir|outputDir)'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+
+  - id: DS-CODE-007
+    name: Debug logging present in application code
+    version: "1"
+    category: sensitive-logging
+    severity: info
+    confidence: high
+    engine: source-analyzer
+    scope: code
+    description: >-
+      Verbose or debug level log statements are present in the shipped code.
+      This is reported for completeness; on its own it is not a vulnerability.
+    impact: >-
+      Debug logging can reveal application internals, request contents and
+      parameter values to anyone able to read the system log, and provides an
+      attacker with useful information about internal structure. Where the
+      logged values include personal data, it also becomes a privacy concern.
+    remediation: >-
+      Strip debug and verbose logging from release builds with an R8 or ProGuard
+      rule that removes Log.v and Log.d calls, or route logging through a
+      wrapper disabled in release configurations.
+    cwe: ["CWE-532"]
+    masvs: ["MASVS-STORAGE-2"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-STORAGE/MASTG-TEST-0003/
+    limitations: >-
+      Informational: this rule counts log statements and does not inspect what
+      is logged. DS-STORAGE-003 covers log statements that name credentials.
+    patterns:
+      - 'Log\.[vd]\s*\('
+    exclude_paths:
+      - /test/
+      - /androidTest/
+    max_findings: 3
+
+  - id: DS-CODE-008
+    name: Tapjacking protection not applied to a sensitive view
+    version: "1"
+    category: android-component-security
+    severity: low
+    confidence: low
+    engine: source-analyzer
+    scope: code
+    description: >-
+      A file handling a credential entry or a confirmation action does not call
+      setFilterTouchesWhenObscured, so touches may be delivered while another
+      window overlays the view.
+    impact: >-
+      An application holding the overlay permission can place a transparent
+      window over this UI and trick the user into confirming an action they
+      cannot see. This is the mechanism behind overlay-based click hijacking.
+    remediation: >-
+      Set android:filterTouchesWhenObscured="true" on views that confirm a
+      sensitive action, or call setFilterTouchesWhenObscured(true) in code.
+      Consider hiding sensitive content when the window loses focus.
+    cwe: ["CWE-1021"]
+    masvs: ["MASVS-PLATFORM-3"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-PLATFORM/MASTG-TEST-0035/
+    limitations: >-
+      Low confidence heuristic based on the presence of credential handling in
+      the same file. Absence of the call is not evidence that the screen is
+      exploitable.
+    patterns:
+      - '(?:class|object)\s+\w*(?:Login|SignIn|Password|Pin|Payment|Transfer|Confirm)\w*'
+    require_any:
+      - '(?i)(setContentView|findViewById|onCreateView|Composable)'
+    exclude_file:
+      - 'setFilterTouchesWhenObscured|filterTouchesWhenObscured'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+    max_findings: 5

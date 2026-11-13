@@ -1,0 +1,125 @@
+# Authentication and authorisation rules.
+rules:
+  - id: DS-AUTH-001
+    name: Credential compared against a hardcoded literal
+    version: "1"
+    category: authentication
+    severity: critical
+    confidence: medium
+    engine: source-analyzer
+    scope: code
+    description: >-
+      A password, PIN or token value is compared with a string literal in
+      application code, which means the expected value is embedded in the APK.
+    impact: >-
+      The literal is recoverable by anyone who decompiles the application, so
+      the check can be satisfied by any user. Where this guards an
+      administrative or debug function, it grants that function to everyone.
+      Because the comparison happens on the device, a user can also patch it out
+      entirely.
+    remediation: >-
+      Perform authentication on a server and never embed a reference credential
+      in the client. Where a local check is unavoidable, store a salted hash
+      from a memory-hard KDF rather than the value itself, and treat the local
+      result as a convenience rather than a security boundary.
+    cwe: ["CWE-798", "CWE-259"]
+    masvs: ["MASVS-AUTH-1", "MASVS-CODE-4"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-AUTH/MASTG-TEST-0017/
+      - https://cwe.mitre.org/data/definitions/798.html
+    verification: >-
+      Extract the literal from the decompiled source and use it against the
+      relevant input field.
+    patterns:
+      - '(?i)(?:password|passwd|pwd|pin|secret|token|passcode)\w*\s*\.\s*equals(?:IgnoreCase)?\s*\(\s*"[^"]{3,}"\s*\)'
+      - '"[^"]{3,}"\s*\.\s*equals(?:IgnoreCase)?\s*\(\s*(?i:password|passwd|pwd|pin|passcode)\w*\s*\)'
+      - '(?i)(?:password|pin|passcode)\w*\s*==\s*"[^"]{3,}"'
+    exclude:
+      - '(?i)("\s*"|null|isEmpty|\.length|hashCode)'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+    confidence_rules:
+      - when_any:
+          - '(?i)(isAdmin|adminMode|debugMode|unlock|bypass|master(Password|Key|Pin))'
+        set: high
+        scope: file
+        reason: the comparison guards an administrative, debug or unlock path
+
+  - id: DS-AUTH-002
+    name: Authorisation decision made only on the client
+    version: "1"
+    category: authentication
+    severity: medium
+    confidence: low
+    engine: source-analyzer
+    scope: code
+    description: >-
+      A role or entitlement flag is read from local storage or a decoded token
+      and used directly to decide what the user may do, with no indication of a
+      server-side check.
+    impact: >-
+      Local state is under the user's control on a rooted device, through a
+      patched build, or by editing the backing file. If the server trusts the
+      client to enforce the restriction, a user can grant themselves privileges
+      or access paid functionality without payment.
+    remediation: >-
+      Treat client-side checks as user experience only. Enforce every
+      authorisation decision on the server for each request, derived from the
+      authenticated session rather than from a value supplied by the client.
+    cwe: ["CWE-602", "CWE-863"]
+    masvs: ["MASVS-AUTH-2"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-AUTH/MASTG-TEST-0018/
+    limitations: >-
+      Low confidence: a local entitlement check is normal when the server also
+      enforces it. This rule flags the pattern for review and cannot see the
+      server's behaviour.
+    patterns:
+      - '(?i)getBoolean\s*\(\s*"[^"]*(?:is_?admin|is_?premium|is_?pro|has_?subscription|is_?paid|entitle)[^"]*"'
+      - '(?i)if\s*\(\s*\w*(?:isAdmin|isPremium|isPro|hasSubscription|isUnlocked)\w*\s*\)'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+    max_findings: 8
+
+  - id: DS-AUTH-003
+    name: Biometric authentication without a cryptographic binding
+    version: "1"
+    category: authentication
+    severity: medium
+    confidence: low
+    engine: source-analyzer
+    scope: code
+    description: >-
+      BiometricPrompt is used without a CryptoObject, so the result of the
+      biometric check is a boolean returned to the application rather than a
+      cryptographic operation that can only succeed after authentication.
+    impact: >-
+      A boolean result can be bypassed by instrumenting the application: a
+      runtime hook that forces the success callback is enough to pass the check.
+      Without a key bound to biometric authentication, there is no cryptographic
+      evidence that the user was present.
+    remediation: >-
+      Generate a key in the Android Keystore with
+      setUserAuthenticationRequired(true) and pass the initialised Cipher,
+      Signature or Mac to BiometricPrompt as a CryptoObject. Use that key to
+      unwrap the data the authentication protects, so a forced callback yields
+      nothing usable.
+    cwe: ["CWE-287", "CWE-603"]
+    masvs: ["MASVS-AUTH-2"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-AUTH/MASTG-TEST-0019/
+      - https://developer.android.com/identity/sign-in/biometric-auth
+    limitations: >-
+      Low confidence: the CryptoObject may be constructed in a different file
+      from the prompt. Confirm by reviewing the authentication flow.
+    patterns:
+      - 'BiometricPrompt'
+      - 'FingerprintManager'
+    exclude_file:
+      - 'CryptoObject|setUserAuthenticationRequired'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+    max_findings: 3

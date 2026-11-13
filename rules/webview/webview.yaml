@@ -1,0 +1,242 @@
+# WebView configuration rules.
+#
+# WebView findings depend on combinations: a JavaScript interface is only
+# reachable if JavaScript is enabled, and file access only matters if remote
+# content can be loaded.  Rules therefore use require_any/require_all to
+# correlate settings within a file.
+rules:
+  - id: DS-WEBVIEW-001
+    name: JavaScript interface exposed to WebView content
+    version: "1"
+    category: webview-security
+    severity: high
+    confidence: medium
+    engine: source-analyzer
+    scope: code
+    description: >-
+      addJavascriptInterface binds a Java object into the JavaScript context of
+      a WebView. Any page loaded in that WebView can call the annotated methods
+      of the bound object.
+    impact: >-
+      If the WebView can be made to load attacker-controlled content, that
+      content can call every @JavascriptInterface method on the bound object
+      with arbitrary arguments, inside the application's process and with its
+      permissions. On applications with minSdkVersion below 17 the exposure is
+      worse: all public methods are reachable and reflection can be used to
+      reach Runtime.exec, giving remote code execution.
+    remediation: >-
+      Remove the bridge if it is not required. Where it is, annotate only the
+      methods that must be reachable with @JavascriptInterface, validate every
+      argument, and restrict the WebView to content you control by overriding
+      shouldOverrideUrlLoading and shouldInterceptRequest to reject unexpected
+      origins. Prefer WebMessageListener, which is origin-scoped, over
+      addJavascriptInterface.
+    cwe: ["CWE-749", "CWE-94"]
+    masvs: ["MASVS-PLATFORM-2"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-PLATFORM/MASTG-TEST-0032/
+      - https://developer.android.com/reference/android/webkit/WebView#addJavascriptInterface(java.lang.Object,%20java.lang.String)
+    verification: >-
+      Load a local HTML page in the WebView that calls the bound object and
+      confirm the method executes.
+    limitations: >-
+      Severity depends on whether the WebView can load untrusted content, which
+      requires reviewing how the URL is chosen.
+    patterns:
+      - '\.addJavascriptInterface\s*\('
+      - '@JavascriptInterface'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+    confidence_rules:
+      - when_any:
+          - 'loadUrl\s*\(\s*(?!")[A-Za-z_]'
+          - 'getIntent\s*\(\s*\)\s*\.\s*(?:getData|getStringExtra)'
+          - 'loadUrl\s*\(\s*"http://'
+        set: high
+        scope: file
+        reason: >-
+          the WebView URL comes from a variable or an Intent rather than a
+          literal, so the loaded origin may be attacker influenced
+
+  - id: DS-WEBVIEW-002
+    name: WebView permits universal access from file URLs
+    version: "1"
+    category: webview-security
+    severity: high
+    confidence: high
+    engine: source-analyzer
+    scope: code
+    description: >-
+      setAllowUniversalAccessFromFileURLs or setAllowFileAccessFromFileURLs is
+      enabled, which lifts the same-origin policy for pages loaded from the
+      file:// scheme.
+    impact: >-
+      A page loaded from the local filesystem can issue cross-origin requests to
+      any origin and read the responses, and can read other local files through
+      XMLHttpRequest. If an attacker can place an HTML file in a location the
+      application loads, or inject script into a locally loaded page, they can
+      exfiltrate the application's private files and authenticated remote data.
+    remediation: >-
+      Set both options to false. They default to false from API 16 upwards, so
+      the call is usually unnecessary. To serve local content safely, use
+      WebViewAssetLoader, which exposes assets over an https origin and keeps
+      the same-origin policy intact.
+    cwe: ["CWE-200", "CWE-668"]
+    masvs: ["MASVS-PLATFORM-2"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-PLATFORM/MASTG-TEST-0033/
+      - https://developer.android.com/reference/androidx/webkit/WebViewAssetLoader
+    patterns:
+      - 'setAllowUniversalAccessFromFileURLs\s*\(\s*true\s*\)'
+      - 'setAllowFileAccessFromFileURLs\s*\(\s*true\s*\)'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+
+  - id: DS-WEBVIEW-003
+    name: WebView accepts mixed HTTP and HTTPS content
+    version: "1"
+    category: webview-security
+    severity: medium
+    confidence: high
+    engine: source-analyzer
+    scope: code
+    description: >-
+      The WebView mixed content mode is set to MIXED_CONTENT_ALWAYS_ALLOW, so a
+      page served over HTTPS may load scripts, stylesheets and frames over
+      plain HTTP.
+    impact: >-
+      An attacker on the network path can modify the HTTP subresources of an
+      otherwise secure page. Because scripts loaded this way run in the origin
+      of the HTTPS page, this gives full control over that page's content and
+      any data it handles.
+    remediation: >-
+      Use MIXED_CONTENT_NEVER_ALLOW, which is the platform default from API 21.
+      Serve every subresource over HTTPS.
+    cwe: ["CWE-319"]
+    masvs: ["MASVS-NETWORK-1", "MASVS-PLATFORM-2"]
+    references:
+      - https://developer.android.com/reference/android/webkit/WebSettings#setMixedContentMode(int)
+    patterns:
+      - 'setMixedContentMode\s*\(\s*(?:WebSettings\.)?MIXED_CONTENT_ALWAYS_ALLOW\s*\)'
+      - 'setMixedContentMode\s*\(\s*0\s*\)'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+
+  - id: DS-WEBVIEW-004
+    name: WebView TLS certificate errors are ignored
+    version: "1"
+    category: network-security
+    severity: critical
+    confidence: high
+    engine: source-analyzer
+    scope: code
+    description: >-
+      A WebViewClient overrides onReceivedSslError and calls
+      SslErrorHandler.proceed(), which continues loading a page whose TLS
+      certificate failed validation.
+    impact: >-
+      TLS provides no protection for this WebView. Any party able to intercept
+      the connection can present a self-signed certificate, and the application
+      will load and render their content as if it came from the real server,
+      including any credentials the page collects.
+    remediation: >-
+      Remove the override, or call handler.cancel() so the load is abandoned on
+      a certificate error. If a private certificate authority is needed, add it
+      as a trust anchor in the network security configuration rather than
+      disabling validation.
+    cwe: ["CWE-295"]
+    masvs: ["MASVS-NETWORK-2"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-NETWORK/MASTG-TEST-0021/
+      - https://developer.android.com/privacy-and-security/risks/unsafe-webview-ssl
+    verification: >-
+      Point the application at a host presenting an untrusted certificate in an
+      authorised test environment and confirm the page still loads.
+    patterns:
+      - 'onReceivedSslError[\s\S]{0,400}?\.proceed\s*\(\s*\)'
+      - 'SslErrorHandler[\s\S]{0,200}?\.proceed\s*\(\s*\)'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+
+  - id: DS-WEBVIEW-005
+    name: WebView content debugging enabled unconditionally
+    version: "1"
+    category: webview-security
+    severity: medium
+    confidence: medium
+    engine: source-analyzer
+    scope: code
+    description: >-
+      setWebContentsDebuggingEnabled(true) is called without an apparent build
+      type guard, which allows any WebView in the application to be inspected
+      from a connected host over Chrome DevTools.
+    impact: >-
+      With USB debugging available, the DOM, JavaScript context, local storage
+      and cookies of every WebView become readable and modifiable from the host,
+      regardless of whether the application itself is debuggable.
+    remediation: >-
+      Guard the call so it only runs in debug builds, for example behind
+      BuildConfig.DEBUG or an ApplicationInfo.FLAG_DEBUGGABLE check.
+    cwe: ["CWE-489"]
+    masvs: ["MASVS-RESILIENCE-4"]
+    references:
+      - https://developer.android.com/reference/android/webkit/WebView#setWebContentsDebuggingEnabled(boolean)
+    patterns:
+      - 'setWebContentsDebuggingEnabled\s*\(\s*true\s*\)'
+    exclude:
+      - '(?i)(BuildConfig\.DEBUG|isDebuggable|FLAG_DEBUGGABLE)'
+    exclude_file:
+      - 'setWebContentsDebuggingEnabled\s*\(\s*BuildConfig\.DEBUG\s*\)'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+
+  - id: DS-WEBVIEW-006
+    name: WebView loads a URL received from an Intent
+    version: "1"
+    category: webview-security
+    severity: high
+    confidence: medium
+    engine: source-analyzer
+    scope: code
+    description: >-
+      A URL taken from an incoming Intent is passed to WebView.loadUrl in a file
+      that also enables JavaScript. If the receiving activity is exported, any
+      application or web link can choose what this WebView loads.
+    impact: >-
+      An attacker who can send the activity an Intent controls the origin loaded
+      in a JavaScript-enabled WebView inside this application. Combined with a
+      JavaScript bridge or relaxed file access this leads to data theft or code
+      execution in the application's context; on its own it enables convincing
+      phishing inside the application's own UI.
+    remediation: >-
+      Validate the URL against an allowlist of expected schemes and hosts before
+      loading it, reject the file:// and javascript: schemes, and do not export
+      the activity unless external entry is a requirement.
+    cwe: ["CWE-939", "CWE-601"]
+    masvs: ["MASVS-PLATFORM-2"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-PLATFORM/MASTG-TEST-0032/
+    verification: >-
+      adb shell am start -n <package>/<activity> -d "https://example.org" and
+      observe whether the supplied URL is loaded.
+    patterns:
+      - 'loadUrl\s*\(\s*getIntent\s*\(\s*\)'
+      - 'loadUrl\s*\(\s*(?:[A-Za-z_]\w*)\s*\.\s*getStringExtra\s*\('
+      - 'loadUrl\s*\(\s*(?:url|uri|link|target|deeplink|webUrl)\s*\)'
+    require_any:
+      - 'setJavaScriptEnabled\s*\(\s*true\s*\)'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+    confidence_rules:
+      - when_any:
+          - 'addJavascriptInterface'
+          - 'setAllowUniversalAccessFromFileURLs\s*\(\s*true'
+        set: high
+        scope: file
+        reason: a JavaScript bridge or relaxed file access is configured on the same WebView

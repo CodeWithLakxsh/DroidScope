@@ -1,0 +1,264 @@
+# Data storage and sensitive logging rules.
+rules:
+  - id: DS-STORAGE-001
+    name: World readable or writable file mode
+    version: "1"
+    category: data-storage
+    severity: high
+    confidence: high
+    engine: source-analyzer
+    scope: code
+    description: >-
+      The application opens a file or preferences store with MODE_WORLD_READABLE
+      or MODE_WORLD_WRITEABLE. Both constants were deprecated in API 17 and
+      throw SecurityException from API 24, but they still take effect on older
+      platforms.
+    impact: >-
+      On a device running API 23 or below, any other application can read, and
+      with the writable mode modify, the affected file inside this
+      application's private directory. A writable store allows an attacker to
+      change configuration or inject data the application later trusts.
+    remediation: >-
+      Use MODE_PRIVATE. Where data genuinely needs to be shared with another
+      application, expose it through a content provider or FileProvider
+      protected by a signature-level permission.
+    cwe: ["CWE-732"]
+    masvs: ["MASVS-STORAGE-2"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-STORAGE/MASTG-TEST-0001/
+      - https://developer.android.com/reference/android/content/Context#MODE_WORLD_READABLE
+    patterns:
+      - 'MODE_WORLD_READABLE'
+      - 'MODE_WORLD_WRITEABLE'
+      - 'openFileOutput\s*\([^,]+,\s*[13]\s*\)'
+      - 'getSharedPreferences\s*\([^,]+,\s*[13]\s*\)'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+
+  - id: DS-STORAGE-002
+    name: Credential stored in SharedPreferences
+    version: "1"
+    category: data-storage
+    severity: medium
+    confidence: medium
+    engine: source-analyzer
+    scope: code
+    description: >-
+      A SharedPreferences write uses a key that names a credential. Shared
+      preferences are stored as plaintext XML in the application's data
+      directory and receive no encryption from the platform.
+    impact: >-
+      The stored value is readable on a rooted device, from a backup if backup
+      is enabled, and through any vulnerability that grants read access to the
+      application's data directory. A long-lived token stored this way remains
+      usable after extraction.
+    remediation: >-
+      Store tokens in EncryptedSharedPreferences from Jetpack Security, with the
+      master key held in the Android Keystore, or keep them only in memory and
+      re-authenticate when needed. Keep refresh token lifetimes short and
+      support server-side revocation.
+    cwe: ["CWE-312", "CWE-922"]
+    masvs: ["MASVS-STORAGE-1"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-STORAGE/MASTG-TEST-0001/
+      - https://developer.android.com/privacy-and-security/cryptography#encrypted-shared-prefs
+    verification: >-
+      On a debuggable build or rooted device, read
+      /data/data/<package>/shared_prefs/*.xml and confirm the value is present
+      in cleartext.
+    limitations: >-
+      The key name indicates intent, not content. Confirm what is actually
+      written before treating this as confirmed credential exposure.
+    patterns:
+      - '\.put(?:String|Int|Long|Boolean)\s*\(\s*"[^"]*(?i:password|passwd|token|secret|api[_-]?key|credential|auth|session|refresh[_-]?token|private[_-]?key|pin)[^"]*"'
+      - 'edit\s*\(\s*\)[\s\S]{0,120}?putString\s*\(\s*"[^"]*(?i:password|token|secret)[^"]*"'
+    exclude:
+      - '(?i)(remember|has_|is_|_enabled|_shown|skip|flag|count|timestamp|expiry|_type|biometric_enabled)'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+    confidence_rules:
+      - when_any:
+          - '(?i)EncryptedSharedPreferences'
+        set: low
+        scope: file
+        reason: >-
+          EncryptedSharedPreferences is referenced in this file, so the value may
+          be written to an encrypted store
+
+  - id: DS-STORAGE-003
+    name: Sensitive value written to the system log
+    version: "1"
+    category: sensitive-logging
+    severity: medium
+    confidence: medium
+    engine: source-analyzer
+    scope: code
+    description: >-
+      A log statement includes a variable or message that names a credential or
+      personal data. Log output is written to the system log, which is shared
+      across the device.
+    impact: >-
+      Logged credentials can be read by any process holding READ_LOGS (system
+      and privileged applications), are captured in bug reports and crash
+      uploads, and remain visible to anyone with ADB access. Secrets written to
+      the log outlive the process that created them.
+    remediation: >-
+      Remove the statement, or log a non-identifying reference instead of the
+      value. Strip debug logging from release builds with a ProGuard or R8 rule
+      and route diagnostics through a logger that redacts by default.
+    cwe: ["CWE-532", "CWE-200"]
+    masvs: ["MASVS-STORAGE-2", "MASVS-PRIVACY-1"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-STORAGE/MASTG-TEST-0003/
+    verification: >-
+      adb logcat while exercising the relevant flow, and confirm whether the
+      value appears.
+    patterns:
+      - 'Log\.[vdiwe]\s*\([^)]{0,200}(?i:password|passwd|token|secret|api[_-]?key|credential|session[_-]?id|jwt|private[_-]?key|otp|pin\b)'
+      - 'System\.out\.print(?:ln)?\s*\([^)]{0,200}(?i:password|token|secret|api[_-]?key)'
+      - 'Timber\.[vdiwe]\s*\([^)]{0,200}(?i:password|token|secret|api[_-]?key)'
+      - 'printStackTrace\s*\(\s*\)[\s\S]{0,80}(?i:password|token)'
+    exclude:
+      - '(?i)(password_?(hint|label|field|placeholder|error|empty|mismatch|required)|token_?(expired|refresh_failed|missing|invalid)|no\s+token|token\s*=\s*null)'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+    confidence_rules:
+      - when_any:
+          - 'Log\.[vdiwe]\s*\([^)]{0,120}(?i:password|token|secret)\s*\)'
+          - 'Log\.[vdiwe]\s*\([^,]+,\s*(?i:password|token|secret)\s*\)'
+        set: high
+        scope: line
+        reason: the credential variable itself is passed to the logger
+
+  - id: DS-STORAGE-004
+    name: Sensitive data written to external storage
+    version: "1"
+    category: data-storage
+    severity: medium
+    confidence: medium
+    engine: source-analyzer
+    scope: code
+    description: >-
+      The application writes to shared external storage in a code path that also
+      handles credentials, personal data or a database export. Files in shared
+      storage are outside the application sandbox.
+    impact: >-
+      Before scoped storage (API 29) any application holding READ_EXTERNAL_STORAGE
+      could read these files; with scoped storage, media and documents written to
+      shared collections remain accessible to other applications and to the user.
+      Files there also survive application uninstall.
+    remediation: >-
+      Keep sensitive files in the application's internal storage
+      (Context.getFilesDir) or in app-specific external storage
+      (getExternalFilesDir) and encrypt them. Share files through FileProvider
+      with per-URI grants rather than writing them to a public directory.
+    cwe: ["CWE-922", "CWE-312"]
+    masvs: ["MASVS-STORAGE-1"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-STORAGE/MASTG-TEST-0002/
+      - https://developer.android.com/training/data-storage
+    patterns:
+      - 'getExternalStorageDirectory\s*\(\s*\)'
+      - 'getExternalStoragePublicDirectory\s*\('
+      - 'Environment\.DIRECTORY_(?:DOWNLOADS|DOCUMENTS)'
+    require_any:
+      - '(?i)(password|token|secret|credential|api[_-]?key|\.db\b|database|backup|export|private[_-]?key|\.json|session)'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+
+  - id: DS-STORAGE-005
+    name: SQL query built by string concatenation
+    version: "1"
+    category: data-storage
+    severity: high
+    confidence: medium
+    engine: source-analyzer
+    scope: code
+    description: >-
+      A raw SQL query or a selection clause is assembled from concatenated
+      values rather than bound parameters.
+    impact: >-
+      If any concatenated value originates outside the application -- an Intent
+      extra, a content provider argument, a server response or user input -- an
+      attacker can alter the query. In a local database this allows reading
+      other tables, bypassing row filters that implement authorisation, and
+      corrupting stored data. An exported content provider turns this into a
+      remotely reachable injection point.
+    remediation: >-
+      Use parameter binding: pass "column = ?" as the selection with the value
+      in selectionArgs, or use query placeholders with rawQuery. Validate
+      identifiers against an allowlist where the column or table name must be
+      dynamic. Room with compile-time verified queries removes most of this
+      surface.
+    cwe: ["CWE-89"]
+    masvs: ["MASVS-CODE-4"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-CODE/MASTG-TEST-0025/
+      - https://developer.android.com/privacy-and-security/risks/sql-injection
+    verification: >-
+      Supply a value containing a quote character through the relevant entry
+      point and observe whether the query structure changes.
+    patterns:
+      - 'rawQuery\s*\(\s*"[^"]*"\s*\+'
+      - 'execSQL\s*\(\s*"[^"]*"\s*\+'
+      - '(?:SELECT|INSERT|UPDATE|DELETE)[^";]{0,120}"\s*\+\s*[A-Za-z_]\w*'
+      - 'String\.format\s*\(\s*"\s*SELECT'
+      - 'selection\s*=\s*"[^"]*"\s*\+'
+    exclude:
+      - '(?i)(selectionArgs|new String\[\]|\?\s*"|bindString)'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+    confidence_rules:
+      - when_any:
+          - 'getIntent\s*\(\s*\)\s*\.\s*get\w*Extra'
+          - 'getQueryParameter\s*\('
+          - 'selection\s*\)|String\s+selection'
+        set: high
+        scope: file
+        reason: a value from an external entry point reaches the query in this file
+
+  - id: DS-STORAGE-006
+    name: Database or file opened without encryption in a credential path
+    version: "1"
+    category: data-storage
+    severity: low
+    confidence: low
+    engine: source-analyzer
+    scope: code
+    description: >-
+      A SQLite database is created or opened in a file that also references
+      credentials or personal data, with no indication that an encrypted
+      database library is in use.
+    impact: >-
+      The database file is stored unencrypted in the application's data
+      directory. On a rooted device, through a backup, or via any path that
+      grants read access to application data, its full contents can be
+      recovered.
+    remediation: >-
+      Encrypt databases that hold personal data or credentials, for example with
+      SQLCipher or by encrypting sensitive columns with a key from the Android
+      Keystore. Consider whether the data needs to be stored at all.
+    cwe: ["CWE-311"]
+    masvs: ["MASVS-STORAGE-1"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-STORAGE/MASTG-TEST-0001/
+    limitations: >-
+      Reported at low confidence: this rule cannot tell what the database
+      actually stores, and unencrypted local storage is acceptable for
+      non-sensitive data.
+    patterns:
+      - 'openOrCreateDatabase\s*\('
+      - 'SQLiteOpenHelper'
+      - 'Room\.databaseBuilder\s*\('
+    require_any:
+      - '(?i)(password|token|secret|credential|card[_-]?number|ssn|medical|account[_-]?number)'
+    exclude_file:
+      - '(?i)(SQLCipher|net\.sqlcipher|SupportFactory|EncryptedFile)'
+    exclude_paths:
+      - /test/
+      - /androidTest/

@@ -1,0 +1,193 @@
+# Transport security rules.
+rules:
+  - id: DS-NETWORK-001
+    name: TrustManager accepts every certificate
+    version: "1"
+    category: network-security
+    severity: critical
+    confidence: high
+    engine: source-analyzer
+    scope: code
+    description: >-
+      A custom X509TrustManager is implemented with an empty checkServerTrusted
+      method, or returns an empty accepted-issuers array, so every certificate
+      presented to it is accepted.
+    impact: >-
+      TLS is reduced to unauthenticated encryption for every connection using
+      this trust manager. Anyone able to intercept traffic can present a
+      self-signed certificate and read and modify all requests and responses,
+      including credentials and authentication tokens, with no indication to the
+      user or the application.
+    remediation: >-
+      Delete the custom trust manager and rely on the platform defaults. If the
+      application must trust a private certificate authority, add it through the
+      network security configuration as a trust anchor. If pinning is the goal,
+      implement it with CertificatePinner (OkHttp) or a pin-set in the network
+      security configuration instead of disabling validation.
+    cwe: ["CWE-295"]
+    masvs: ["MASVS-NETWORK-2"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-NETWORK/MASTG-TEST-0021/
+      - https://developer.android.com/privacy-and-security/risks/unsafe-trustmanager
+    verification: >-
+      Route the application through an intercepting proxy with an untrusted
+      certificate in an authorised test environment and confirm requests still
+      succeed.
+    patterns:
+      - 'checkServerTrusted\s*\([^)]*\)\s*(?:throws\s+CertificateException\s*)?\{\s*\}'
+      - 'public\s+void\s+checkServerTrusted\s*\([^)]*\)[^{]*\{\s*(?://[^\n]*\n\s*)*\}'
+      - 'getAcceptedIssuers\s*\([^)]*\)\s*\{\s*return\s+(?:null|new\s+X509Certificate\s*\[\s*0\s*\])\s*;\s*\}'
+      - 'TrustManager\s*\[\s*\]\s*\{[\s\S]{0,400}?checkServerTrusted[\s\S]{0,120}?\{\s*\}'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+
+  - id: DS-NETWORK-002
+    name: Hostname verification disabled
+    version: "1"
+    category: network-security
+    severity: critical
+    confidence: high
+    engine: source-analyzer
+    scope: code
+    description: >-
+      A HostnameVerifier is installed that returns true for every host, or the
+      deprecated ALLOW_ALL_HOSTNAME_VERIFIER is used.
+    impact: >-
+      The application accepts any valid certificate for any hostname. An
+      attacker holding a legitimate certificate for a domain they control can
+      intercept connections intended for the application's server, because the
+      name on the certificate is never compared with the host being contacted.
+    remediation: >-
+      Remove the custom verifier and use the platform default, which performs
+      RFC 2818 hostname matching. For pinning, use OkHttp CertificatePinner or a
+      network security configuration pin-set, neither of which requires
+      weakening hostname checks.
+    cwe: ["CWE-297", "CWE-295"]
+    masvs: ["MASVS-NETWORK-2"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-NETWORK/MASTG-TEST-0021/
+      - https://developer.android.com/privacy-and-security/risks/unsafe-hostname
+    patterns:
+      - 'verify\s*\(\s*String\s+\w+\s*,\s*SSLSession\s+\w+\s*\)\s*\{\s*return\s+true\s*;'
+      - 'ALLOW_ALL_HOSTNAME_VERIFIER'
+      - 'setHostnameVerifier\s*\(\s*(?:new\s+)?[A-Za-z_]\w*\s*\(\s*\)\s*\{\s*[\s\S]{0,200}?return\s+true'
+      - 'hostnameVerifier\s*\{\s*_\s*,\s*_\s*->\s*true\s*\}'
+      - 'hostnameVerifier\s*\(\s*\{\s*_\s*,\s*_\s*->\s*true\s*\}\s*\)'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+
+  - id: DS-NETWORK-003
+    name: Cleartext HTTP endpoint referenced in code
+    version: "1"
+    category: network-security
+    severity: medium
+    confidence: medium
+    engine: source-analyzer
+    scope: any
+    description: >-
+      A literal http:// URL pointing at a routable host appears in the
+      application's code or resources.
+    impact: >-
+      Requests to this endpoint are sent unencrypted, so their contents and any
+      credentials they carry can be read and modified by anyone on the network
+      path. Responses can be substituted, which matters most when the response
+      drives application behaviour such as a configuration or update check.
+    remediation: >-
+      Move the endpoint to HTTPS and remove the cleartext URL. Keep cleartext
+      disabled in the network security configuration so a regression fails
+      loudly rather than silently sending plaintext.
+    cwe: ["CWE-319"]
+    masvs: ["MASVS-NETWORK-1"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-NETWORK/MASTG-TEST-0019/
+    limitations: >-
+      A literal URL is not proof that the application contacts it. Namespace
+      URIs, documentation links and example hosts are excluded, but a reviewer
+      should confirm the endpoint is used at runtime.
+    patterns:
+      - '"http://(?!localhost|127\.0\.0\.1|10\.0\.2\.2|0\.0\.0\.0)[A-Za-z0-9.\-]+\.[A-Za-z]{2,}'
+    exclude:
+      - '(?i)(schemas\.|www\.w3\.org|xmlns|example\.(com|org|net)|\.dtd|\.xsd|apache\.org/licenses|localhost|127\.0\.0\.1|android\.com/apk)'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+    max_findings: 25
+
+  - id: DS-NETWORK-004
+    name: TLS socket factory configured with a permissive trust manager
+    version: "1"
+    category: network-security
+    severity: high
+    confidence: medium
+    engine: source-analyzer
+    scope: code
+    description: >-
+      An SSLContext is initialised with a locally defined trust manager array,
+      or a socket factory is installed with SSL verification options turned off.
+    impact: >-
+      Replacing the platform trust manager removes certificate chain validation
+      from every connection made through the resulting socket factory, which
+      permits transparent interception of the application's traffic.
+    remediation: >-
+      Initialise SSLContext with null trust managers so the platform default
+      applies, and configure any additional trust anchors through the network
+      security configuration.
+    cwe: ["CWE-295"]
+    masvs: ["MASVS-NETWORK-2"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-NETWORK/MASTG-TEST-0021/
+    patterns:
+      - 'SSLContext[\s\S]{0,200}?\.init\s*\(\s*null\s*,\s*(?:new\s+TrustManager\s*\[\s*\]|[A-Za-z_]\w*TrustManager)'
+      - 'setSSLSocketFactory\s*\(\s*[^)]*(?i:trustall|insecure|unsafe|nossl)'
+      - 'SSLSocketFactory\.getSocketFactory\s*\(\s*\)[\s\S]{0,120}?ALLOW_ALL'
+      - 'sslSocketFactory\s*\([^)]*(?i:trustAll|unsafe|insecure)'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+
+  - id: DS-NETWORK-005
+    name: Certificate pinning not configured
+    version: "1"
+    category: network-security
+    severity: info
+    confidence: medium
+    engine: source-analyzer
+    scope: code
+    description: >-
+      The application makes HTTPS requests but no certificate or public key
+      pinning configuration was found, either in code or in a network security
+      configuration pin-set.
+    impact: >-
+      Without pinning, the application trusts the full device trust store. On a
+      device where an attacker can install a certificate authority -- an
+      attacker-controlled device, a managed device with an MDM profile, or one
+      compromised by malware -- the application's TLS traffic can be
+      intercepted. This is expected behaviour for most applications and is only
+      a gap where the threat model includes a hostile device.
+    remediation: >-
+      Where the application handles high-value data, pin the server public key
+      with OkHttp CertificatePinner or a network security configuration pin-set,
+      pin at least two keys (current and backup), and set an expiration so a
+      certificate rotation cannot brick installed clients.
+    cwe: ["CWE-295"]
+    masvs: ["MASVS-NETWORK-2"]
+    references:
+      - https://mas.owasp.org/MASTG/tests/android/MASVS-NETWORK/MASTG-TEST-0022/
+      - https://developer.android.com/privacy-and-security/security-config#CertificatePinning
+    limitations: >-
+      Informational. Absence of pinning is a design decision, not a defect, and
+      this rule cannot see pinning implemented inside a native library or
+      through a mechanism it does not recognise.
+    patterns:
+      - 'https://[A-Za-z0-9.\-]+\.[A-Za-z]{2,}'
+    require_any:
+      - '(?:OkHttpClient|HttpsURLConnection|Retrofit|HttpURLConnection|URLConnection)'
+    exclude_file:
+      - '(?i)(CertificatePinner|certificatePinner|pin-set|PinningTrustManager|setPinning|publicKeyPin)'
+    exclude_paths:
+      - /test/
+      - /androidTest/
+    max_findings: 1
+    group_by: file

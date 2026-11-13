@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+dist/
+build/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+*.tsbuildinfo
+playwright-report/
+test-results/
+
+# DroidScope runtime data (uploaded APKs, extracted artifacts, reports, database)
+data/
+*.db
+*.db-wal
+*.db-shm
+.droidscope/
+
+# Analysis samples: never commit APKs or extracted application code
+*.apk
+*.aab
+*.dex
+*.so
+!tests/fixtures/**/*.apk.sha256
+scratch/
+tmp/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.jks
+*.keystore
+!tests/fixtures/**/debug.keystore
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
