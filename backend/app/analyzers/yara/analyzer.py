@@ -26,7 +26,14 @@ from app.detection.model import Evidence, RawFinding
 
 logger = get_logger(__name__)
 
-DEFAULT_RULES_DIR = Path(__file__).resolve().parents[4] / "rules" / "yara"
+
+def _default_yara_dir() -> Path:
+    """YARA rules live beside the declarative rules, wherever those are."""
+    from app.detection.pattern_rules import resolve_rules_dir
+
+    return resolve_rules_dir() / "yara"
+
+
 MAX_ENTRY_BYTES = 64 * 1024 * 1024
 MAX_SCAN_ENTRIES = 3000
 MATCH_TIMEOUT_SECONDS = 30
@@ -65,7 +72,7 @@ class YaraRuleSet:
     """Loads, validates and compiles the YARA rule directory."""
 
     def __init__(self, rules_dir: Path | None = None) -> None:
-        self.rules_dir = Path(rules_dir or DEFAULT_RULES_DIR)
+        self.rules_dir = Path(rules_dir) if rules_dir else _default_yara_dir()
         self.compiled: Any = None
         self.report = RuleSetReport(compiled=False)
 

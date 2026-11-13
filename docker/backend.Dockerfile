@@ -52,6 +52,9 @@ COPY backend/app ./app
 RUN pip install --no-cache-dir ".[postgres,redis,yara]"
 
 COPY rules /rules
+# An installed package has no repository layout beside it, so the rule
+# directory must be stated explicitly.
+ENV DROIDSCOPE_RULES_DIR=/rules
 ENV DROIDSCOPE_YARA_RULES_DIR=/rules/yara
 
 # The analysis worker handles untrusted input, so it never runs as root.

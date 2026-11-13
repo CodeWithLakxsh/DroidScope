@@ -501,6 +501,14 @@ def rules_validate(
 
     if errors:
         raise typer.Exit(EXIT_ERROR)
+    if not specs:
+        # A deployment that cannot find its rules would otherwise report
+        # success while detecting nothing.
+        error_console.print(
+            "[red]No detection rules were found.[/red] Set DROIDSCOPE_RULES_DIR to the "
+            "directory containing them."
+        )
+        raise typer.Exit(EXIT_ERROR)
     console.print("[green]All rule files are valid.[/green]")
 
 

@@ -78,6 +78,10 @@ class Settings(BaseSettings):
     apktool_path: Path | None = None
     adb_path: Path | None = None
     frida_path: Path | None = None
+    # Directory holding the declarative detection rules. Unset means "discover
+    # it", which matters for a packaged install where the repository layout is
+    # not present next to the installed package.
+    rules_dir: Path | None = None
     yara_rules_dir: Path | None = None
     ghidra_home: Path | None = None
     android_sdk_root: Path | None = None

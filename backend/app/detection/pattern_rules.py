@@ -38,7 +38,38 @@ from app.detection.registry import registry
 
 logger = get_logger(__name__)
 
-DEFAULT_RULES_DIR = Path(__file__).resolve().parents[3] / "rules"
+
+def _discover_rules_dir() -> Path:
+    """Locate the rule directory.
+
+    A checkout has `rules/` beside `backend/`, but an installed package does
+    not, so the repository-relative guess has to be one candidate among
+    several rather than the only one. The environment variable wins, which is
+    what a container sets.
+    """
+    import os
+
+    configured = os.environ.get("DROIDSCOPE_RULES_DIR")
+    if configured:
+        return Path(configured).expanduser()
+
+    here = Path(__file__).resolve()
+    candidates = [
+        # Running from a checkout: backend/app/detection/ -> <repo>/rules
+        here.parents[3] / "rules",
+        # Installed package alongside a rules directory at the same root.
+        here.parents[2] / "rules",
+        # Container layout used by the published image.
+        Path("/rules"),
+        Path.cwd() / "rules",
+    ]
+    for candidate in candidates:
+        if candidate.is_dir():
+            return candidate
+    return candidates[0]
+
+
+DEFAULT_RULES_DIR = _discover_rules_dir()
 MAX_FINDINGS_PER_RULE = 60
 MAX_MATCHES_PER_FILE = 5
 SNIPPET_CONTEXT_CHARS = 220
@@ -394,9 +425,21 @@ def iter_rule_documents(rules_dir: Path) -> Iterator[tuple[dict[str, Any], Path]
             yield document, path
 
 
+def resolve_rules_dir(explicit: Path | None = None) -> Path:
+    """Rule directory precedence: explicit argument, settings, discovery."""
+    if explicit is not None:
+        return Path(explicit)
+    from app.core.config import get_settings
+
+    configured = get_settings().rules_dir
+    if configured:
+        return Path(configured)
+    return _discover_rules_dir()
+
+
 def validate_rules_dir(rules_dir: Path | None = None) -> tuple[list[PatternRuleSpec], list[str]]:
     """Validate every rule file.  Returns (specs, errors)."""
-    rules_dir = Path(rules_dir or DEFAULT_RULES_DIR)
+    rules_dir = resolve_rules_dir(rules_dir)
     specs: list[PatternRuleSpec] = []
     errors: list[str] = []
     seen: dict[str, str] = {}

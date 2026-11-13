@@ -124,11 +124,17 @@ jobs:
           for item in incomplete:
               print(f"  analyzer {item['analyzer']} did not run: {item['error']}")
 
+          # The analyzers that produce the findings these thresholds assert on.
+          # apktool is deliberately not required: it contributes smali and
+          # decoded resources for browsing, not findings, so this job does not
+          # pay to install it.
+          required = {"manifest-analyzer", "source-analyzer", "network-indicator-analyzer"}
+          missing = required.intersection(a["analyzer"] for a in incomplete)
+
           # The fixture is deliberately insecure, so a scan that finds little
-          # means the detection engine regressed. The thresholds are stated
-          # against what actually ran, so a missing tool reports as a missing
-          # tool rather than as a detection regression.
-          assert not incomplete, f"analyzers did not run: {[i['analyzer'] for i in incomplete]}"
+          # means the detection engine regressed. Distinguishing a missing tool
+          # from a regression keeps that signal meaningful.
+          assert not missing, f"required analyzers did not run: {sorted(missing)}"
           assert result["findings_total"] > 40, "detection regression: too few findings"
           assert counts.get("critical", 0) >= 5, "detection regression: critical findings missing"
           assert counts.get("high", 0) >= 10, "detection regression: high findings missing"

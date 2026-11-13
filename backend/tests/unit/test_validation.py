@@ -171,3 +171,54 @@ class TestSafeExtract:
         archive = make_zip("big.zip", {"a.bin": b"x" * 5000})
         with pytest.raises(ArchiveSecurityError, match="permitted total size"):
             safe_extract(archive, tmp_path / "out", settings=settings, max_total_bytes=100)
+
+
+class TestRuleDirectoryResolution:
+    """A packaged install has no repository layout beside it.
+
+    This was a real defect: `droidscope rules validate` inside the container
+    image reported "0 valid, 0 invalid" and exited successfully, so a
+    deployment that could not find its rules looked healthy while detecting
+    nothing.
+    """
+
+    def test_finds_rules_in_a_checkout(self) -> None:
+        from app.detection.pattern_rules import resolve_rules_dir
+
+        assert (resolve_rules_dir() / "crypto").is_dir()
+
+    def test_environment_variable_takes_precedence(self, tmp_path, monkeypatch) -> None:
+        from app.core.config import reset_settings_cache
+        from app.detection.pattern_rules import resolve_rules_dir
+
+        custom = tmp_path / "custom-rules"
+        custom.mkdir()
+        monkeypatch.setenv("DROIDSCOPE_RULES_DIR", str(custom))
+        reset_settings_cache()
+        try:
+            assert resolve_rules_dir() == custom
+        finally:
+            reset_settings_cache()
+
+    def test_an_explicit_argument_wins(self, tmp_path) -> None:
+        from app.detection.pattern_rules import resolve_rules_dir
+
+        assert resolve_rules_dir(tmp_path) == tmp_path
+
+    def test_missing_directory_yields_no_rules_rather_than_raising(self, tmp_path) -> None:
+        from app.detection.pattern_rules import validate_rules_dir
+
+        specs, errors = validate_rules_dir(tmp_path / "does-not-exist")
+        assert specs == []
+        assert errors == []
+
+    def test_yara_directory_follows_the_rules_directory(self, tmp_path, monkeypatch) -> None:
+        from app.analyzers.yara.analyzer import YaraRuleSet
+        from app.core.config import reset_settings_cache
+
+        monkeypatch.setenv("DROIDSCOPE_RULES_DIR", str(tmp_path))
+        reset_settings_cache()
+        try:
+            assert YaraRuleSet().rules_dir == tmp_path / "yara"
+        finally:
+            reset_settings_cache()

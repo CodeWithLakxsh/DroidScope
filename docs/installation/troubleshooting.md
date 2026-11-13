@@ -123,6 +123,19 @@ That is a bug worth reporting — include the snippet. Meanwhile, mark the
 finding a false positive, which removes it from the risk score and records the
 decision.
 
+## `droidscope rules validate` reports zero rules
+
+The rule directory could not be found. From a checkout it is discovered
+automatically; a packaged or containerised install has no repository layout
+beside it, so point at the rules explicitly:
+
+```bash
+export DROIDSCOPE_RULES_DIR=/path/to/rules
+```
+
+The command exits non-zero when no rules load, so a deployment that cannot find
+them fails loudly rather than appearing healthy while detecting nothing.
+
 ## Tests skip with "the fixture APK has not been built"
 
 Build them:

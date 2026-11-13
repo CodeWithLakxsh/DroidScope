@@ -8,8 +8,45 @@
  */
 
 import { expect, test } from '@playwright/test';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const FIXTURE = path.resolve(here, '../../../tests/fixtures/vulnerable-app.apk');
 
 test.use({ reducedMotion: 'reduce' });
+
+/**
+ * Ensure at least one completed scan exists.
+ *
+ * Playwright runs spec files alphabetically, so this file runs before
+ * workflow.spec.ts and cannot rely on the data that one creates. Seeding
+ * through the API keeps the suite independent of file ordering.
+ */
+test.beforeAll(async ({ request }) => {
+  const existing = await request.get('/api/v1/scans?status=completed&limit=1');
+  if (existing.ok() && (await existing.json()).total > 0) return;
+
+  const upload = await request.post('/api/v1/apks', {
+    multipart: { file: { name: 'vulnerable-app.apk', mimeType: 'application/vnd.android.package-archive', buffer: fs.readFileSync(FIXTURE) } },
+  });
+  expect(upload.ok(), 'fixture upload failed').toBeTruthy();
+  const apkId = (await upload.json()).apk.id;
+
+  const scan = await request.post('/api/v1/scans', {
+    data: { apk_id: apkId, profile: 'quick', reuse_existing: false },
+  });
+  expect(scan.ok(), 'scan creation failed').toBeTruthy();
+  const scanId = (await scan.json()).scan.id;
+
+  await expect
+    .poll(
+      async () => (await (await request.get(`/api/v1/scans/${scanId}`)).json()).status,
+      { timeout: 120_000, intervals: [500, 1000, 2000] },
+    )
+    .toMatch(/^(completed|failed|cancelled)$/);
+});
 
 test.describe('with reduced motion', () => {
   test('dashboard content is visible without animation', async ({ page }) => {
