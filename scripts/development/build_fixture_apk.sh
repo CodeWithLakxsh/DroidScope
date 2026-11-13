@@ -45,6 +45,42 @@ echo "SDK          : ${SDK_ROOT}"
 echo "build-tools  : $(basename "${BUILD_TOOLS_DIR%/}")"
 echo "platform jar : $(basename "$(dirname "${PLATFORM_JAR}")")"
 
+
+# Generate a random string of a given length from a character set.
+#
+# The subshell disables pipefail: `head -c` closes the pipe once it has enough
+# bytes, which sends SIGPIPE to `tr`, and under `set -o pipefail` that failure
+# would abort the whole script.
+rand_str() {
+    local length="$1" charset="$2"
+    (
+        set +o pipefail
+        LC_ALL=C tr -dc "${charset}" < /dev/urandom | head -c "${length}"
+    )
+}
+
+# Replace @@TOKEN@@ placeholders in the staged fixture sources with values that
+# match each provider's documented credential format.
+substitute_placeholders() {
+    local tree="$1"
+
+    local aws_key="AKIA$(rand_str 16 'A-Z0-9')"
+    local api_secret
+    api_secret="$(rand_str 40 'A-Za-z0-9')"
+    local slack_token="xoxb-$(rand_str 10 '0-9')-$(rand_str 10 '0-9')-$(rand_str 24 'A-Za-z0-9')"
+    local google_key="AIza$(rand_str 35 'A-Za-z0-9_-')"
+
+    local file
+    while IFS= read -r file; do
+        # A temporary file keeps this portable across BSD and GNU sed.
+        sed -e "s|@@AWS_ACCESS_KEY_ID@@|${aws_key}|g" \
+            -e "s|@@API_SECRET_KEY@@|${api_secret}|g" \
+            -e "s|@@SLACK_TOKEN@@|${slack_token}|g" \
+            -e "s|@@GOOGLE_API_KEY@@|${google_key}|g" \
+            "${file}" > "${file}.tmp" && mv "${file}.tmp" "${file}"
+    done < <(find "${tree}" -name '*.java')
+}
+
 ensure_keystore() {
     if [[ -f "${KEYSTORE}" ]]; then
         return
@@ -102,6 +138,13 @@ build_app() {
     #    space would otherwise be split into two invalid arguments.
     mkdir -p "${work}/gen" "${work}/src"
     cp -R "${src_dir}/src/." "${work}/src/"
+
+    # Substitute credential placeholders with generated, shape-valid values.
+    # These are generated per build and exist only in the APK, so no
+    # credential-shaped literal is ever committed to the repository. They
+    # authenticate to nothing; they exist so the secret detector has something
+    # of the right shape to find.
+    substitute_placeholders "${work}/src"
     (cd "${work}" && find src gen -name '*.java' > sources.txt 2>/dev/null) || true
     (cd "${work}" && javac -nowarn -source 8 -target 8 \
         -bootclasspath "${PLATFORM_JAR}" \

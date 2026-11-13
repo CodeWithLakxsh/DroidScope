@@ -122,8 +122,16 @@ class TestVulnerableFixture:
             assert row.raw_value is None, "raw secret values must not be stored by default"
             assert row.value_fingerprint, "a fingerprint is needed to correlate across scans"
             assert "•" in (row.snippet or ""), "the snippet should carry a mask"
-        # The literal from the fixture must not appear anywhere in the evidence.
-        assert all("AKIA_REDACTED_IN_HISTORY" not in (row.snippet or "") for row in rows)
+        # No unmasked credential may appear in any stored snippet. The fixture's
+        # values are generated at build time, so this asserts the *shape* is
+        # absent rather than one specific string.
+        import re
+
+        unmasked = re.compile(r"AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{36}|xoxb-\d{10}-")
+        for row in rows:
+            assert not unmasked.search(row.snippet or ""), (
+                f"an unmasked credential reached the database: {row.snippet!r}"
+            )
 
     async def test_risk_summary_is_explainable(self, session, vulnerable_apk) -> None:
         _apk, outcome = await run_scan(session, vulnerable_apk, ScanProfile.quick)
