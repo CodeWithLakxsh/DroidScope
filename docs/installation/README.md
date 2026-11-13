@@ -25,7 +25,7 @@ missing, what each missing tool would enable, and how to install it.
 ## Quick install
 
 ```bash
-git clone https://github.com/droidscope/droidscope.git
+git clone https://github.com/CodeWithLakxsh/DroidScope.git
 cd droidscope
 make setup
 make doctor

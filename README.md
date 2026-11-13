@@ -93,7 +93,7 @@ what each missing tool would enable.
 ### Install and run
 
 ```bash
-git clone https://github.com/droidscope/droidscope.git
+git clone https://github.com/CodeWithLakxsh/DroidScope.git
 cd droidscope
 
 make setup          # backend venv + frontend dependencies

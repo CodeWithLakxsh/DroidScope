@@ -49,7 +49,7 @@ def render_sarif(document: dict[str, Any]) -> dict[str, Any]:
                     "driver": {
                         "name": "DroidScope",
                         "version": __version__,
-                        "informationUri": "https://github.com/droidscope/droidscope",
+                        "informationUri": "https://github.com/CodeWithLakxsh/DroidScope",
                         "rules": list(rules.values()),
                     }
                 },

@@ -72,7 +72,7 @@ def create_app() -> FastAPI:
         docs_url="/docs",
         redoc_url="/redoc",
         openapi_url="/openapi.json",
-        contact={"name": "DroidScope", "url": "https://github.com/droidscope/droidscope"},
+        contact={"name": "DroidScope", "url": "https://github.com/CodeWithLakxsh/DroidScope"},
         license_info={"name": "Apache-2.0", "url": "https://www.apache.org/licenses/LICENSE-2.0"},
     )
 

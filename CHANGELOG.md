@@ -72,5 +72,5 @@ mitmproxy traffic capture is not implemented; dynamic analysis is implemented
 but was not verified against live hardware in the development environment;
 Redis is accepted as a queue backend but only the database backend exists.
 
-[Unreleased]: https://github.com/droidscope/droidscope/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/droidscope/droidscope/releases/tag/v0.1.0
+[Unreleased]: https://github.com/CodeWithLakxsh/DroidScope/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/CodeWithLakxsh/DroidScope/releases/tag/v0.1.0
