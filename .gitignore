@@ -44,7 +44,9 @@ tmp/
 *.pem
 *.jks
 *.keystore
-!tests/fixtures/**/debug.keystore
+# The fixture signing key is generated at build time by
+# scripts/development/build_fixture_apk.sh and is never committed.
+tests/fixtures/.build/
 
 # Editors and OS
 .DS_Store
